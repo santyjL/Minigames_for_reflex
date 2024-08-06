@@ -28,7 +28,7 @@ def navbar() -> rx.Component:
                     align_items="center",
                 ),
                 rx.hstack(
-                    navbar_link("Juegos", "/"),
+                    navbar_link("JUEGOS", "/"),
                     navbar_link("FQA", "/FQA"),
                     justify="end",
                     spacing="5",
@@ -55,7 +55,7 @@ def navbar() -> rx.Component:
                                 color = Colores.TEXTO.value)
                     ),
                     rx.menu.content(
-                        rx.menu.item("juegos" , color = Colores.TEXTO.value),
+                        rx.menu.item("JUEGOS" , color = Colores.TEXTO.value),
                         rx.menu.item("FQA" , color = Colores.TEXTO.value),
                         bg=Colores.SECUNDARIO.value,
                     ),
@@ -65,7 +65,7 @@ def navbar() -> rx.Component:
                 align_items="center",
             ),
         ),
-        bg=Colores.PRINCIPAL.value,
+        bg=Colores.SECUNDARIO.value,
         padding="1em",
         position="fixed",
         top="0px",
