@@ -7,5 +7,7 @@ from MiniGames.styles import Colores
 def pantalla_principal() -> rx.Component:
     return rx.box(
         navbar(),
-        bg= Colores.BG.value
+        bg= Colores.BG.value,
+        background_size= "cover",
+        height= "100vh"
     )
