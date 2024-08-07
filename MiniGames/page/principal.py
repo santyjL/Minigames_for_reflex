@@ -1,7 +1,8 @@
 import reflex as rx
 
 from MiniGames.Components.navbar import navbar
-from MiniGames.styles import Colores, Tamaños, TamañosTexto
+from MiniGames.styles import (Colores, Tamaños, TamañosTexto,
+                              juegos_movil_y_tableta)
 
 
 def juegos() -> rx.components:
@@ -130,13 +131,7 @@ def juegos() -> rx.components:
                             font_size = TamañosTexto.TEXTO.value,
                             align = "center"
                         ),
-                        padding = Tamaños.PADDING.value,
-                        margin = Tamaños.MARGIN_MEDIANO.value,
-                        bg = Colores.PRINCIPAL.value,
-                        width = "100wv",
-                        border_radius = Tamaños.BORDER_RADIUS.value,
-                        border = Tamaños.BORDER.value,
-                        align = "center"
+                        style = juegos_movil_y_tableta
                     ),
                     rx.box(
                         rx.heading(
@@ -151,13 +146,7 @@ def juegos() -> rx.components:
                             font_size = TamañosTexto.TEXTO.value,
                             align = "center"
                         ),
-                        padding = Tamaños.PADDING.value,
-                        margin = Tamaños.MARGIN_MEDIANO.value,
-                        bg = Colores.PRINCIPAL.value,
-                        width = "100wv",
-                        border_radius = Tamaños.BORDER_RADIUS.value,
-                        border = Tamaños.BORDER.value,
-                        align = "center"
+                        style = juegos_movil_y_tableta
                     ),
                     rx.box(
                         rx.heading(
@@ -172,13 +161,7 @@ def juegos() -> rx.components:
                             font_size = TamañosTexto.TEXTO.value,
                             align = "center"
                         ),
-                        padding = Tamaños.PADDING.value,
-                        margin = Tamaños.MARGIN_MEDIANO.value,
-                        bg = Colores.PRINCIPAL.value,
-                        width = "100wv",
-                        border_radius = Tamaños.BORDER_RADIUS.value,
-                        border = Tamaños.BORDER.value,
-                        align = "center"
+                        style = juegos_movil_y_tableta
                     )
                 )
             )

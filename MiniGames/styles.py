@@ -33,5 +33,5 @@ juegos_movil_y_tableta = dict(
     width = "100wv",
     border_radius = Tamaños.BORDER_RADIUS.value,
     border = Tamaños.BORDER.value,
-    align = "center"
+    align = "left"
     )
