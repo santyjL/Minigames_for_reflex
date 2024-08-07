@@ -49,7 +49,9 @@ def desktop_juegos() -> rx.Component:
                 border=Tamaños.BORDER.value,
                 width="100wv"
             ),
-            href=routers.PIEDRA_PAPEL_TIJERAS.value
+            href=routers.PIEDRA_PAPEL_TIJERAS.value,
+            text_decoration="none"
+
         ),
         rx.hstack(
             rx.link(
@@ -74,7 +76,9 @@ def desktop_juegos() -> rx.Component:
                     border=Tamaños.BORDER.value,
                     align="left"
                 ),
-                href=routers.ENCUENTRA_EL_NUMERO.value
+                href=routers.ENCUENTRA_EL_NUMERO.value,
+                text_decoration="none"
+
             ),
             rx.link(
                 rx.box(
@@ -98,7 +102,9 @@ def desktop_juegos() -> rx.Component:
                     border=Tamaños.BORDER.value,
                     align="right"
                 ),
-                href=routers.TRES_EN_RAYA.value
+                href=routers.TRES_EN_RAYA.value,
+                text_decoration="none"
+
             )
         )
     )
@@ -141,7 +147,9 @@ def mobile_juegos() -> rx.Component:
                 ),
                 style=juegos_movil_y_tableta
             ),
-            href=routers.PIEDRA_PAPEL_TIJERAS.value
+            href=routers.PIEDRA_PAPEL_TIJERAS.value,
+            text_decoration="none"
+
         ),
         rx.link(
             rx.box(
@@ -159,7 +167,9 @@ def mobile_juegos() -> rx.Component:
                 ),
                 style=juegos_movil_y_tableta
             ),
-            href=routers.ENCUENTRA_EL_NUMERO.value
+            href=routers.ENCUENTRA_EL_NUMERO.value,
+            text_decoration="none"
+
         ),
         rx.link(
             rx.box(
@@ -177,7 +187,9 @@ def mobile_juegos() -> rx.Component:
                 ),
                 style=juegos_movil_y_tableta
             ),
-            href=routers.TRES_EN_RAYA.value
+            href=routers.TRES_EN_RAYA.value,
+            text_decoration="none"
+
         )
     )
 

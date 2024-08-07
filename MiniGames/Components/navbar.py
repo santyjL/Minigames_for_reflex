@@ -12,7 +12,9 @@ def navbar_link(text: str, url: str) -> rx.Component:
             weight="medium",
             color = Colores.TEXTO.value
             ),
-        href=url
+        href=url,
+        text_decoration="none"
+
     )
 
 def navbar() -> rx.Component:
