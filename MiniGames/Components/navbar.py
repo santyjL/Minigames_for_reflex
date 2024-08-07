@@ -7,7 +7,7 @@ def navbar_link(text: str, url: str) -> rx.Component:
     return rx.link(
         rx.text(
             text,
-            font_size=TamañosTexto.TITULO.value,
+            font_size=TamañosTexto.SUBTITULO.value,
             weight="medium",
             color = Colores.TEXTO.value
             ),
