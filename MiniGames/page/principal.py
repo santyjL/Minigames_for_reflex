@@ -129,7 +129,7 @@ def juegos() -> rx.components:
                             "El clasico juego de pieda papel o tijeras  lo conocemos todo el mundo pero no todos conocen el juego de piedra, papel, tijeras, lagarto, spock",
                             color = Colores.TEXTO.value,
                             font_size = TamañosTexto.TEXTO.value,
-                            align = "center"
+                            align = "left"
                         ),
                         style = juegos_movil_y_tableta
                     ),
@@ -144,7 +144,7 @@ def juegos() -> rx.components:
                             "del 1 al 100 se a perdido un numero pero cual sera, hay que entcontrarlo",
                             color = Colores.TEXTO.value,
                             font_size = TamañosTexto.TEXTO.value,
-                            align = "center"
+                            align = "left"
                         ),
                         style = juegos_movil_y_tableta
                     ),
@@ -159,14 +159,14 @@ def juegos() -> rx.components:
                             'El clasico "Tres en raya" no podia faltar  un juego mitico que todos conocemos',
                             color = Colores.TEXTO.value,
                             font_size = TamañosTexto.TEXTO.value,
-                            align = "center"
+                            align = "left"
                         ),
                         style = juegos_movil_y_tableta
                     )
                 )
             )
         ),
-        margin = Tamaños.MARGIN_GRANDE.value
+        margin = 50
     )
 
 

@@ -9,7 +9,7 @@ class TamañosTexto(Enum):
 class Colores(Enum):
     BG = "linear-gradient(#7A0C0C , #8B89E7)"
     PRINCIPAL = "#DE1010"
-    SECUNDARIO = "#0A0897"
+    SECUNDARIO = "#211F6A"
 
     TEXTO = "#C1C1C1"
     SUBTITULO = "#FFFFFF"
