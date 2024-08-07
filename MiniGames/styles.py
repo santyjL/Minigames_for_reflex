@@ -25,3 +25,13 @@ class Tamaños (Enum):
     BORDER_RADIUS = "2em"
 
     BORDER = "solid #000000"
+
+juegos_movil_y_tableta = dict(
+    padding = Tamaños.PADDING.value,
+    margin = Tamaños.MARGIN_MEDIANO.value,
+    bg = Colores.PRINCIPAL.value,
+    width = "100wv",
+    border_radius = Tamaños.BORDER_RADIUS.value,
+    border = Tamaños.BORDER.value,
+    align = "center"
+    )
