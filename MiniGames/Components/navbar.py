@@ -29,7 +29,7 @@ def navbar() -> rx.Component:
                     align_items="center",
                 ),
                 rx.hstack(
-                    navbar_link("JUEGOS", "/"),
+                    navbar_link("JUEGOS", routers.PRINCIPAL.value),
                     navbar_link("FQA", routers.FQA.value),
                     justify="end",
                     spacing="5",
@@ -69,8 +69,8 @@ def navbar() -> rx.Component:
         bg=Colores.SECUNDARIO.value,
         padding="0.3em",
         padding_x = "1em",
-        position="fixed",
-        top="0px",
-        z_index="5",
+        #position="fixed",
+        #top="0px",
+        #z_index="5",
         width="100%",
     )
