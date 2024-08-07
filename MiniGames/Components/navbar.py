@@ -1,5 +1,6 @@
 import reflex as rx
 
+from MiniGames.routers import routers
 from MiniGames.styles import Colores, TamañosTexto
 
 
@@ -29,7 +30,7 @@ def navbar() -> rx.Component:
                 ),
                 rx.hstack(
                     navbar_link("JUEGOS", "/"),
-                    navbar_link("FQA", "/FQA"),
+                    navbar_link("FQA", routers.FQA.value),
                     justify="end",
                     spacing="5",
                 ),

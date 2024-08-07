@@ -3,6 +3,7 @@
 import reflex as rx
 
 from MiniGames.page.principal import pantalla_principal
+from MiniGames.routers import routers
 
 app = rx.App()
-app.add_page(pantalla_principal , route="/")
+app.add_page(pantalla_principal , route=routers.PRINCIPAL.value)
