@@ -35,3 +35,13 @@ juegos_movil_y_tableta = dict(
     border = Tamaños.BORDER.value,
     align = "left"
     )
+
+juegos_pc = dict(
+    padding=Tamaños.PADDING.value,
+    margin_x=Tamaños.MARGIN_MEDIANO.value,
+    bg=Colores.PRINCIPAL.value,
+    width="45wv",
+    border_radius=Tamaños.BORDER_RADIUS.value,
+    border=Tamaños.BORDER.value,
+    align="right"
+    )
