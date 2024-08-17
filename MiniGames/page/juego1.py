@@ -8,38 +8,36 @@ from MiniGames.styles import Colores
 
 numero_random : int = random.randint(1 , 101)
 
-class numeroRandom(rx.state):
-   numero:int = 0
+class numeroRandom(rx.State):
+    numero:int = 0
 
-   @rx.var
-   def sumar10(self):
+    def sumar10(self):
        if self.numero <= 90:
-        return self.numero +10
+            self.numero +10
 
-   @rx.var
-   def sumar5(self):
+    def sumar5(self):
        if self.numero <=95:
-        return self.numero +5
+            self.numero +5
 
-   @rx.var
-   def sumar1(self):
+    def sumar1(self):
        if self.numero <=99:
-        return self.numero +1
+            self.numero +1
 
-   @rx.var
-   def restar10(self):
+    def restar10(self):
        if self.numero >= 10:
-        return self.numero -10
+            self.numero -10
 
-   @rx.var
-   def restar5(self):
+    def restar5(self):
        if self.numero >= 5:
-        return self.numero -5
+            self.numero -5
 
-   @rx.var
-   def restar6(self):
+    def restar6(self):
        if self.numero >= 1:
-        return self.numero -1
+            self.numero -1
+
+    @rx.var
+    def var_numero(self) -> int :
+        return self.numero
 
 class stateTexto(rx.State):
     pass
