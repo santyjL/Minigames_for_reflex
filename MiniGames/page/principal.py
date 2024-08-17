@@ -14,97 +14,97 @@ def desktop_juegos() -> rx.Component:
                     "Qué Quieres Jugar?",
                     color=Colores.TITULO.value,
                     font_size=TamañosTexto.TITULO.value,
-                    align="center"
+                    text_align="center"
                 ),
                 padding=Tamaños.PADDING.value,
                 margin=Tamaños.MARGIN_GRANDE.value,
                 bg=Colores.PRINCIPAL.value,
                 border_radius=Tamaños.BORDER_RADIUS.value,
                 border=Tamaños.BORDER.value,
-                align="center",
-                width="50wv",
             ),
             justify_content="center",
             align_items="center",
             width="100%"
         ),
-        rx.link(
-            rx.box(
-                rx.heading(
-                    "Piedra🥌 , Papel📋 , Tijeras✂ , Lagarto🦎 , Spock 🖖",
-                    color=Colores.SUBTITULO.value,
-                    font_size=TamañosTexto.SUBTITULO.value,
-                    align="left"
-                ),
-                rx.text(
-                    "El clásico juego de piedra papel o tijeras lo conocemos todos, pero no todos conocen el juego de piedra, papel, tijeras, lagarto, spock.",
-                    color=Colores.TEXTO.value,
-                    font_size=TamañosTexto.TEXTO.value,
-                    align="left"
-                ),
-                padding=Tamaños.PADDING.value,
-                margin=Tamaños.MARGIN_MEDIANO.value,
-                bg=Colores.PRINCIPAL.value,
-                border_radius=Tamaños.BORDER_RADIUS.value,
-                border=Tamaños.BORDER.value,
-                width="100wv"
-            ),
-            href=routers.PIEDRA_PAPEL_TIJERAS.value,
-            text_decoration="none"
 
+        rx.center(
+            rx.link(
+                rx.box(
+                    rx.heading(
+                        "Piedra🥌 , Papel📋 , Tijeras✂ , Lagarto🦎 , Spock 🖖",
+                        color=Colores.SUBTITULO.value,
+                        font_size=TamañosTexto.SUBTITULO.value,
+                        text_align="left"
+                    ),
+                    rx.text(
+                        "El clásico juego de piedra papel o tijeras lo conocemos todos, pero no todos conocen el juego de piedra, papel, tijeras, lagarto, spock.",
+                        color=Colores.TEXTO.value,
+                        font_size=TamañosTexto.TEXTO.value,
+                        text_align="left"
+                    ),
+                    padding=Tamaños.PADDING.value,
+                    margin=Tamaños.MARGIN_MEDIANO.value,
+                    bg=Colores.PRINCIPAL.value,
+                    border_radius=Tamaños.BORDER_RADIUS.value,
+                    border=Tamaños.BORDER.value,
+                    width="85vw"
+                ),
+                href=routers.PIEDRA_PAPEL_TIJERAS.value,
+                text_decoration="none"
+            ),
         ),
-        rx.hstack(
-            rx.link(
-                rx.box(
-                    rx.heading(
-                        "Encuentra el número 🎲",
-                        color=Colores.SUBTITULO.value,
-                        font_size=TamañosTexto.SUBTITULO.value,
-                        align="left"
-                    ),
-                    rx.text(
-                        "Del 1 al 100 se ha perdido un número, ¿pero cuál será? Hay que encontrarlo.",
-                        color=Colores.TEXTO.value,
-                        font_size=TamañosTexto.TEXTO.value,
-                        align="left"
-                    ),
-                    padding=Tamaños.PADDING.value,
-                    margin_x=Tamaños.MARGIN_MEDIANO.value,
-                    bg=Colores.PRINCIPAL.value,
-                    width="45wv",
-                    border_radius=Tamaños.BORDER_RADIUS.value,
-                    border=Tamaños.BORDER.value,
-                    align="left"
-                ),
-                href=routers.ENCUENTRA_EL_NUMERO.value,
-                text_decoration="none"
 
-            ),
-            rx.link(
-                rx.box(
-                    rx.heading(
-                        "Tres en raya ❌ || ⭕",
-                        color=Colores.SUBTITULO.value,
-                        font_size=TamañosTexto.SUBTITULO.value,
-                        align="left"
+        rx.center(
+            rx.hstack(
+                rx.link(
+                    rx.box(
+                        rx.heading(
+                            "Encuentra el número 🎲",
+                            color=Colores.SUBTITULO.value,
+                            font_size=TamañosTexto.SUBTITULO.value,
+                            text_align="left"
+                        ),
+                        rx.text(
+                            "Del 1 al 100 se ha perdido un número, ¿pero cuál será? Hay que encontrarlo.",
+                            color=Colores.TEXTO.value,
+                            font_size=TamañosTexto.TEXTO.value,
+                            text_align="left"
+                        ),
+                        padding=Tamaños.PADDING.value,
+                        margin_x=Tamaños.MARGIN_MEDIANO.value,
+                        bg=Colores.PRINCIPAL.value,
+                        width="41vw",
+                        border_radius=Tamaños.BORDER_RADIUS.value,
+                        border=Tamaños.BORDER.value,
                     ),
-                    rx.text(
-                        'El clásico "Tres en raya" no podía faltar, un juego mítico que todos conocemos.',
-                        color=Colores.TEXTO.value,
-                        font_size=TamañosTexto.TEXTO.value,
-                        align="left"
-                    ),
-                    padding=Tamaños.PADDING.value,
-                    margin_x=Tamaños.MARGIN_MEDIANO.value,
-                    bg=Colores.PRINCIPAL.value,
-                    width="45wv",
-                    border_radius=Tamaños.BORDER_RADIUS.value,
-                    border=Tamaños.BORDER.value,
-                    align="right"
+                    href=routers.ENCUENTRA_EL_NUMERO.value,
+                    text_decoration="none"
                 ),
-                href=routers.TRES_EN_RAYA.value,
-                text_decoration="none"
 
+                rx.link(
+                    rx.box(
+                        rx.heading(
+                            "Tres en raya ❌ || ⭕",
+                            color=Colores.SUBTITULO.value,
+                            font_size=TamañosTexto.SUBTITULO.value,
+                            text_align="left"
+                        ),
+                        rx.text(
+                            'El clásico "Tres en raya" no podía faltar, un juego mítico que todos conocemos.',
+                            color=Colores.TEXTO.value,
+                            font_size=TamañosTexto.TEXTO.value,
+                            text_align="left"
+                        ),
+                        padding=Tamaños.PADDING.value,
+                        margin_x=Tamaños.MARGIN_MEDIANO.value,
+                        bg=Colores.PRINCIPAL.value,
+                        width="41vw",
+                        border_radius=Tamaños.BORDER_RADIUS.value,
+                        border=Tamaños.BORDER.value,
+                    ),
+                    href=routers.TRES_EN_RAYA.value,
+                    text_decoration="none"
+                )
             )
         )
     )
@@ -116,16 +116,16 @@ def mobile_juegos() -> rx.Component:
                 rx.heading(
                     "Qué Quieres Jugar?",
                     color=Colores.TITULO.value,
-                    font_size=TamañosTexto.TITULO.value,
-                    align="center"
+                    font_size=TamañosTexto.SUBTITULO.value,
+                    text_align="center"
                 ),
                 padding=Tamaños.PADDING.value,
                 margin=Tamaños.MARGIN_MEDIANO.value,
                 bg=Colores.PRINCIPAL.value,
-                width="100wv",
+                width="45vw",
                 border_radius=Tamaños.BORDER_RADIUS.value,
                 border=Tamaños.BORDER.value,
-                align="center"
+                text_align="center"
             ),
             justify_content="center",
             align_items="center",
@@ -137,19 +137,18 @@ def mobile_juegos() -> rx.Component:
                     "Piedra🥌 , Papel📋 , Tijeras✂ , Lagarto🦎 , Spock 🖖",
                     color=Colores.SUBTITULO.value,
                     font_size=TamañosTexto.SUBTITULO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 rx.text(
                     "El clásico juego de piedra papel o tijeras lo conocemos todos, pero no todos conocen el juego de piedra, papel, tijeras, lagarto, spock.",
                     color=Colores.TEXTO.value,
                     font_size=TamañosTexto.TEXTO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 style=juegos_movil_y_tableta
             ),
             href=routers.PIEDRA_PAPEL_TIJERAS.value,
             text_decoration="none"
-
         ),
         rx.link(
             rx.box(
@@ -157,19 +156,18 @@ def mobile_juegos() -> rx.Component:
                     "Encuentra el número 🎲",
                     color=Colores.SUBTITULO.value,
                     font_size=TamañosTexto.SUBTITULO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 rx.text(
                     "Del 1 al 100 se ha perdido un número, ¿pero cuál será? Hay que encontrarlo.",
                     color=Colores.TEXTO.value,
                     font_size=TamañosTexto.TEXTO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 style=juegos_movil_y_tableta
             ),
             href=routers.ENCUENTRA_EL_NUMERO.value,
             text_decoration="none"
-
         ),
         rx.link(
             rx.box(
@@ -177,19 +175,18 @@ def mobile_juegos() -> rx.Component:
                     "Tres en raya ❌ || ⭕",
                     color=Colores.SUBTITULO.value,
                     font_size=TamañosTexto.SUBTITULO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 rx.text(
                     'El clásico "Tres en raya" no podía faltar, un juego mítico que todos conocemos.',
                     color=Colores.TEXTO.value,
                     font_size=TamañosTexto.TEXTO.value,
-                    align="left"
+                    text_align="left"
                 ),
                 style=juegos_movil_y_tableta
             ),
             href=routers.TRES_EN_RAYA.value,
             text_decoration="none"
-
         )
     )
 
@@ -205,7 +202,6 @@ def juegos() -> rx.Component:
                 margin=50
             )
         ),
-
         min_height="100vh"
     )
 
@@ -214,7 +210,9 @@ def pantalla_principal() -> rx.Component:
     return rx.box(
         rx.vstack(
             navbar(),
-            juegos(),
+            rx.center(
+                juegos(),
+            ),
             align_items="stretch",
             width="100%"
         ),

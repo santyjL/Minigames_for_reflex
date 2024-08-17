@@ -28,10 +28,10 @@ class Tamaños (Enum):
 
 juegos_movil_y_tableta = dict(
     padding = Tamaños.PADDING.value,
-    margin = Tamaños.MARGIN_MEDIANO.value,
+    margin = Tamaños.MARGIN_PEQUEÑO.value,
     bg = Colores.PRINCIPAL.value,
-    width = "100wv",
+    width = "65vw",
     border_radius = Tamaños.BORDER_RADIUS.value,
     border = Tamaños.BORDER.value,
-    align = "left"
+    align = "center"
     )
