@@ -8,4 +8,4 @@ from MiniGames.routers import routers
 
 app = rx.App()
 app.add_page(pantalla_principal , route=routers.PRINCIPAL.value)
-app.add_page(pantalla_juego1 , route=routers.ENCUENTRA_EL_NUMERO.value)
+
