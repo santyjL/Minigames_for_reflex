@@ -82,8 +82,11 @@ def texto_enunciado() -> rx.Component:
                 color = Colores.TEXTO.value,
                 align="center"
                     ),
+            padding=Tamaños.PADDING.value,
             width ="50vw",
             margin=50,
+            border_radius = Tamaños.BORDER_RADIUS.value,
+            bg = Colores.BG_COMPONENTES.value
         )
     )
 
