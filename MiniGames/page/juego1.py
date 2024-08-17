@@ -19,7 +19,7 @@ def juego() -> rx.Component:
 
 @rx.page(route=routers.ENCUENTRA_EL_NUMERO.value)
 def pantalla_juego1() -> rx.Component:
-    rx.box(
+    return rx.box(
         rx.vstack(
         navbar(),
         align_items="stretch",

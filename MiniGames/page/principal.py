@@ -209,6 +209,7 @@ def juegos() -> rx.Component:
         min_height="100vh"
     )
 
+@rx.page(route=routers.PRINCIPAL.value)
 def pantalla_principal() -> rx.Component:
     return rx.box(
         rx.vstack(
