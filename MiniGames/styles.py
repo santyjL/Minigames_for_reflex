@@ -21,7 +21,7 @@ class Tamaños (Enum):
     MARGIN_MEDIANO = "1em"
     MARGIN_GRANDE = "2em"
 
-    PADDING = "1em"
+    PADDING = "1.5em"
 
     BORDER_RADIUS = "2em"
 
