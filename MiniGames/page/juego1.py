@@ -6,8 +6,6 @@ from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto
 
-numero_random: int = random.randint(1, 100)
-
 # Estilos comunes
 estilos_boton = {
     "border": Tamaños.BORDER.value,
@@ -18,63 +16,50 @@ estilos_boton = {
     "margin_x": Tamaños.MARGIN_MEDIANO.value
 }
 
-class NumeroRandom(rx.State):
-    """
-    Clase que maneja el estado del número a adivinar y los intentos del jugador.
-    """
+#back - end
+class EstadoJuego(rx.State):
+    "Clase que maneja el estado del número a adivinar y los intentos del jugador."
+
+    numero_random: int = random.randint(1, 100)
     numero: int = 1
     intentos: int = 7
+    texto : str = "Encuentra el numero random del 1 al 100 tienes 7 oportunidades para encontrarlos"
+
 
     def actualizar_numero(self, valor: int):
-        """
-        Actualiza el número actual y los intentos restantes.
-        """
+        "Actualiza el número actual y los intentos restantes."
+
         self.numero = max(1, min(100, self.numero + valor))
-        self.intentos -= 1
-        StateTexto.modificar_texto(self.numero, numero_random)
+
+    def actualizar_texto(self):
+        valor : int = abs(self.numero - self.numero_random)
+
+        if self.intentos >= 0 :
+            match valor:
+                case _ if valor == 0 : self.texto = "¡Felicidades! Has encontrado el número."
+                case _ if valor < 5 : self.texto = "El numero que buscas esta muy cerca"
+                case _ if valor < 10 : self.texto = "El numero que buscas esta a tan solo 10 o menos numeros de distancia"
+                case _ if valor < 20 : self.texto = "El numero que buscas esta a solo a 20 o menos numeros de distancia"
+                case _ if valor < 30 : self.texto = "El numero que buscas esta algo cerca"
+                case _ : self.texto = "El numero que buscas esta muy lejos"
+
+            self.intentos -= 1
+
+        else :
+            self.texto = "Te has quedado sin oportunidades , has perdido"
 
     @rx.var
     def var_numero(self) -> int:
         return self.numero
 
-class StateTexto(rx.State):
-    """
-    Clase que maneja el estado del texto de pistas para el jugador.
-    """
-    texto: str = "Encuentra el numero random del 1 al 100 tienes 7 oportunidades para encontrarlos"
-
-    def modificar_texto(self, numero_actual: int, numero_random: int):
-        """
-        Modifica el texto de pista basado en la diferencia entre el número actual y el número a adivinar.
-        """
-
-        diferencia = abs(numero_actual - numero_random)
-
-        self.texto = rx.cond(
-
-            numero_actual == numero_random, "¡Felicidades! Has encontrado el número.",
-
-            rx.cond(diferencia <= 5, "El numero que buscas esta muy cerca",
-
-            rx.cond(diferencia <= 10, "El numero que buscas esta a tan solo 10 o menos numeros de distancia",
-
-            rx.cond(diferencia <= 20, "El numero que buscas esta a solo a 20 o menos numeros de distancia",
-
-            rx.cond(diferencia <= 30, "El numero que buscas esta algo cerca",
-
-            "El numero que buscas esta muy lejos")))))
-
-        if NumeroRandom.intentos == 0 and numero_actual != numero_random:
-            self.texto = "Encuentra el numero random del 1 al 100 tienes 7 oportunidades para encontrarlos"
-
     @rx.var
-    def get_texto(self) -> str:
+    def var_texto(self) -> str :
         return self.texto
 
+#front - end
 def boton_numero(valor: int, color: str) -> rx.Component:
-    """
-    Componente reutilizable para los botones de incremento/decremento.
-    """
+    "Componente reutilizable para los botones de incremento/decremento."
+
     return rx.button(
         rx.text(
             f"{'+' if valor > 0 else ''}{valor}",
@@ -82,14 +67,14 @@ def boton_numero(valor: int, color: str) -> rx.Component:
             color=Colores.SUBTITULO.value
         ),
         style={**estilos_boton, "bg": color},
-        on_click=NumeroRandom.actualizar_numero(valor)
+        on_click=EstadoJuego.actualizar_numero(valor)
     )
 
 def texto_enunciado() -> rx.Component:
     return rx.center(
         rx.box(
             rx.text(
-                StateTexto.get_texto,
+                EstadoJuego.var_texto,
                 font_size=TamañosTexto.TEXTO.value,
                 color=Colores.TEXTO.value,
                 align="center"
@@ -116,17 +101,20 @@ def juego() -> rx.Component:
                 rx.center(
                     rx.vstack(
                         rx.text(
-                            NumeroRandom.var_numero,
+                            EstadoJuego.var_numero,
                             font_size=150,
                             color=Colores.TITULO.value,
                         ),
                             rx.button(
+                                rx.text(EstadoJuego.intentos ,
+                                        font_size = TamañosTexto.TEXTO.value ,
+                                        color = Colores.TEXTO.value),
                                 bg=Colores.BG.value,
                                 border_radius="50em",
+                                border =Tamaños.BORDER.value,
                                 width="100px",
                                 height="100px",
-                                on_click=StateTexto.get_texto
-
+                                on_click=EstadoJuego.actualizar_texto()
                         ),
                         align_items="center",
                     )
@@ -148,9 +136,8 @@ def juego() -> rx.Component:
 
 @rx.page(route=routers.ENCUENTRA_EL_NUMERO.value)
 def pantalla_juego1() -> rx.Component:
-    """
-    Página principal del juego.
-    """
+    "Página principal del juego."
+
     return rx.box(
         rx.vstack(
             navbar(),
