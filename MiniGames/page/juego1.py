@@ -4,7 +4,7 @@ import reflex as rx
 
 from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
-from MiniGames.styles import Colores, Tamaños, TamañosTexto
+from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
 
 # Estilos comunes
 estilos_boton = {
@@ -12,8 +12,9 @@ estilos_boton = {
     "border_radius": Tamaños.BORDER_RADIUS.value,
     "padding": Tamaños.PADDING.value,
     "width": "80px",
-    "margin_y": Tamaños.MARGIN_GRANDE.value,
-    "margin_x": Tamaños.MARGIN_MEDIANO.value
+    "margin_y": Tamaños.MARGIN_PEQUEÑO.value,
+    "margin_x": Tamaños.MARGIN_MEDIANO.value,
+    "_hover"  : _hover_generico
 }
 
 #back - end
@@ -34,7 +35,7 @@ class EstadoJuego(rx.State):
     def actualizar_texto(self):
         valor : int = abs(self.numero - self.numero_random)
 
-        if self.intentos >= 0 :
+        if self.intentos > 0 :
             match valor:
                 case _ if valor == 0 : self.texto = "¡Felicidades! Has encontrado el número."
                 case _ if valor < 5 : self.texto = "El numero que buscas esta muy cerca"
@@ -83,7 +84,23 @@ def texto_enunciado() -> rx.Component:
             width="60vw",
             margin=50,
             border_radius=Tamaños.BORDER_RADIUS.value,
-            bg=Colores.BG_COMPONENTES.value
+            bg="linear-gradient(45deg ,#67a6a6bb , #8867a6bb)",
+            background_size="400% 400%",
+            animation="gradientAnimation 3s infinite alternate",
+            _style={
+            "@keyframes gradientAnimation": {
+                "0%": {
+                    "background-position": "0% 50%"
+                },
+                "50%": {
+                    "background-position": "100% 50%"
+                },
+                "100%": {
+                    "background-position": "0% 50%"
+                }
+            }
+        }
+
         )
     )
 
@@ -104,6 +121,7 @@ def juego() -> rx.Component:
                             EstadoJuego.var_numero,
                             font_size=150,
                             color=Colores.TITULO.value,
+                            _hover = _hover_generico
                         ),
                             rx.button(
                                 rx.text(EstadoJuego.intentos ,
@@ -114,6 +132,7 @@ def juego() -> rx.Component:
                                 border =Tamaños.BORDER.value,
                                 width="100px",
                                 height="100px",
+                                _hover = _hover_generico,
                                 on_click=EstadoJuego.actualizar_texto()
                         ),
                         align_items="center",
