@@ -58,8 +58,8 @@ def navbar() -> rx.Component:
                                 color = Colores.TEXTO.value)
                     ),
                     rx.menu.content(
-                        rx.menu.item("JUEGOS" , color = Colores.TEXTO.value),
-                        rx.menu.item("FQA" , color = Colores.TEXTO.value),
+                        rx.menu.item(navbar_link("JUEGOS" ,routers.PRINCIPAL.value) , color = Colores.TEXTO.value),
+                        rx.menu.item(navbar_link("FQA" , routers.FQA.value) , color = Colores.TEXTO.value),
                         bg=Colores.SECUNDARIO.value,
                     ),
                     justify="end",
