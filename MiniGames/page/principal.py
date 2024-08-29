@@ -2,7 +2,7 @@ import reflex as rx
 
 from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
-from MiniGames.styles import (Colores, Tamaños, TamañosTexto,
+from MiniGames.styles import (Colores, Tamaños, TamañosTexto, _hover_generico,
                               juegos_movil_y_tableta)
 
 
@@ -47,7 +47,8 @@ def desktop_juegos() -> rx.Component:
                     bg=Colores.PRINCIPAL.value,
                     border_radius=Tamaños.BORDER_RADIUS.value,
                     border=Tamaños.BORDER.value,
-                    width="85vw"
+                    width="85vw",
+                    _hover = _hover_generico
                 ),
                 href=routers.PIEDRA_PAPEL_TIJERAS.value,
                 text_decoration="none"
@@ -76,6 +77,7 @@ def desktop_juegos() -> rx.Component:
                         width="41vw",
                         border_radius=Tamaños.BORDER_RADIUS.value,
                         border=Tamaños.BORDER.value,
+                        _hover = _hover_generico
                     ),
                     href=routers.ENCUENTRA_EL_NUMERO.value,
                     text_decoration="none"
@@ -101,6 +103,7 @@ def desktop_juegos() -> rx.Component:
                         width="41vw",
                         border_radius=Tamaños.BORDER_RADIUS.value,
                         border=Tamaños.BORDER.value,
+                        _hover = _hover_generico
                     ),
                     href=routers.TRES_EN_RAYA.value,
                     text_decoration="none"

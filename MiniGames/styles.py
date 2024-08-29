@@ -30,7 +30,7 @@ class Tamaños (Enum):
 _hover_generico={
     "transform": "scale(1.05)",
     "transition": "all 0.5s ease-in-out",
-    "background_color": "#211F6A",
+    "filter": "drop-shadow(0 0 30px rgba(150, 255, 50, 1.5))",
     },
 
 juegos_movil_y_tableta = dict(
@@ -40,5 +40,6 @@ juegos_movil_y_tableta = dict(
     width = "65vw",
     border_radius = Tamaños.BORDER_RADIUS.value,
     border = Tamaños.BORDER.value,
-    align = "center"
+    align = "center",
+    _hover = _hover_generico
     )
