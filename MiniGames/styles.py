@@ -27,6 +27,12 @@ class Tamaños (Enum):
 
     BORDER = "solid #000000"
 
+_hover_generico={
+    "transform": "scale(1.05)",
+    "transition": "all 0.5s ease-in-out",
+    "background_color": "#211F6A",
+    },
+
 juegos_movil_y_tableta = dict(
     padding = Tamaños.PADDING.value,
     margin = Tamaños.MARGIN_PEQUEÑO.value,
