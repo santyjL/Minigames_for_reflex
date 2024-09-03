@@ -24,38 +24,58 @@ class EstadoJuego(rx.State):
     numero_random: int = random.randint(1, 100)
     numero: int = 1
     intentos: int = 7
-    texto : str = "Encuentra el numero random del 1 al 100 tienes 7 oportunidades para encontrarlos"
-
+    texto: str = "Encuentra el numero random del 1 al 100 tienes 7 oportunidades para encontrarlos"
+    mostrar_modal: bool = False  # Variable para manejar la visibilidad del modal
 
     def actualizar_numero(self, valor: int):
         "Actualiza el número actual y los intentos restantes."
-
         self.numero = max(1, min(100, self.numero + valor))
 
     def actualizar_texto(self):
-        valor : int = abs(self.numero - self.numero_random)
+        valor: int = abs(self.numero - self.numero_random)
 
-        if self.intentos > 0 :
+        if self.intentos > 0:
             match valor:
-                case _ if valor == 0 : self.texto = "¡Felicidades! Has encontrado el número."
-                case _ if valor < 5 : self.texto = "El numero que buscas esta muy cerca"
-                case _ if valor < 10 : self.texto = "El numero que buscas esta a tan solo 10 o menos numeros de distancia"
-                case _ if valor < 20 : self.texto = "El numero que buscas esta a solo a 20 o menos numeros de distancia"
-                case _ if valor < 30 : self.texto = "El numero que buscas esta algo cerca"
-                case _ : self.texto = "El numero que buscas esta muy lejos"
+                case _ if valor == 0:
+                    self.texto = "¡Felicidades! Has encontrado el número."
+                    self.mostrar_modal = True
+
+                case _ if valor < 5:
+                    self.texto = "El número que buscas está muy cerca"
+                case _ if valor < 10:
+                    self.texto = "El número que buscas está a tan solo 10 o menos números de distancia"
+                case _ if valor < 20:
+                    self.texto = "El número que buscas está a solo a 20 o menos números de distancia"
+                case _ if valor < 30:
+                    self.texto = "El número que buscas está algo cerca"
+                case _:
+                    self.texto = "El número que buscas está muy lejos"
 
             self.intentos -= 1
+        else:
+            self.texto = "Te has quedado sin oportunidades, has perdido"
+            self.mostrar_modal = True  # Muestra el modal cuando se queden sin intentos
 
-        else :
-            self.texto = "Te has quedado sin oportunidades , has perdido"
+    def reiniciar_juego(self):
+        "Reinicia el juego."
+        self.numero_random = random.randint(1, 100)
+        self.numero = 1
+        self.intentos = 7
+        self.texto = "Encuentra el número random del 1 al 100, tienes 7 oportunidades para encontrarlo"
+        self.mostrar_modal = False  # Oculta el modal
 
     @rx.var
     def var_numero(self) -> int:
         return self.numero
 
     @rx.var
-    def var_texto(self) -> str :
+    def var_texto(self) -> str:
         return self.texto
+
+    @rx.var
+    def var_mostrar_modal(self) -> bool:
+        return self.mostrar_modal
+
 
 #front - end
 def boton_numero(valor: int, color: str) -> rx.Component:
@@ -146,12 +166,61 @@ def juego() -> rx.Component:
                 )
             ),
             padding=Tamaños.PADDING.value,
-            width="75vw",
+            width="60vw",
             margin=Tamaños.MARGIN_GRANDE.value,
             border_radius=Tamaños.BORDER_RADIUS.value,
             bg=Colores.BG_COMPONENTES.value
         )
     )
+
+def modal_perdida() -> rx.Component:
+    "Modal que se muestra cuando el jugador ha perdido."
+
+    return rx.cond(
+        EstadoJuego.var_mostrar_modal,
+        # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es True
+        rx.box(
+            rx.box(
+                rx.text("Has perdido", font_size=TamañosTexto.TITULO.value, color=Colores.TITULO.value),
+                rx.text("Te has quedado sin oportunidades, ¿qué te gustaría hacer?", margin_y="10px"),
+                rx.hstack(
+                    rx.button(
+                        "Volver a jugar",
+                        on_click=EstadoJuego.reiniciar_juego,
+                        style=estilos_boton
+                    ),
+                    rx.button(
+                        "Menú Principal",
+                        on_click=rx.redirect(routers.PRINCIPAL.value),
+                        style=estilos_boton
+                    ),
+                    justify="space-around",
+                ),
+                padding=Tamaños.PADDING.value,
+                bg=Colores.BG_COMPONENTES.value,
+                border_radius=Tamaños.BORDER_RADIUS.value,
+                box_shadow="0 0 10px rgba(0, 0, 0, 0.25)",
+                width="300px",
+                text_align="center"
+            ),
+            position="fixed",
+            top="50%",
+            left="50%",
+            transform="translate(-50%, -50%)",
+            bg="rgba(0, 0, 0, 0.8)",  # Fondo semitransparente para la superposición
+            width="100vw",
+            height="100vh",
+            display="flex",
+            justify_content="center",
+            align_items="center",
+            z_index="1000",  # Asegura que el modal esté por encima de otros elementos
+        ),
+        # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es False (un box vacío)
+        rx.box()
+    )
+
+
+
 
 @rx.page(route=routers.ENCUENTRA_EL_NUMERO.value)
 def pantalla_juego1() -> rx.Component:
@@ -162,6 +231,7 @@ def pantalla_juego1() -> rx.Component:
             navbar(),
             texto_enunciado(),
             juego(),
+            modal_perdida(),  # Aquí integramos el modal en la página
             align_items="stretch",
             width="100%"
         ),
