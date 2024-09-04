@@ -41,13 +41,12 @@ def modal_perdistes(EstadoJuego ) -> rx.Component:
                         "Volver a jugar",
                         on_click=EstadoJuego.reiniciar_juego,
                         style=botones,
-                        align = "left"
                     ),
+                    rx.spacer(),
                     rx.button(
                         "Menú Principal",
                         on_click=rx.redirect(routers.PRINCIPAL.value),
                         style=botones,
-                        align = "right"
                     ),
                     justify="space-around",
                 ),
@@ -87,12 +86,14 @@ def modal_ganastes(EstadoJuego ) -> rx.Component:
                     rx.button(
                         "Volver a jugar",
                         on_click=EstadoJuego.reiniciar_juego,
-                        style=botones
+                        style=botones,
+
                     ),
+                    rx.spacer(),
                     rx.button(
                         "Menú Principal",
                         on_click=rx.redirect(routers.PRINCIPAL.value),
-                        style=botones
+                        style=botones,
                     ),
                     justify="space-around",
                 ),

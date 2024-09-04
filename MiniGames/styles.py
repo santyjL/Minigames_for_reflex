@@ -50,6 +50,6 @@ botones = dict(
     margin = Tamaños.MARGIN_PEQUEÑO.value,
     padding = Tamaños.PADDING.value,
     bg = Colores.SECUNDARIO.value,
-    align_text = "center",
+    text_align = "center",
     _hover = _hover_generico
 )
