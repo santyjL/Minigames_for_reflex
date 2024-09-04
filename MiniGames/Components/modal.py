@@ -26,8 +26,15 @@ def modal_perdistes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
             # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es True
             rx.box(
                 rx.box(
-                    rx.text("Has perdido", font_size=TamañosTexto.TITULO.value, color=Colores.TITULO.value),
-                    rx.text("Te has quedado sin oportunidades, ¿qué te gustaría hacer?", margin_y="10px"),
+                    rx.heading("Has perdido",
+                            font_size=TamañosTexto.TITULO.value,
+                            color=Colores.TITULO.value),
+
+                    rx.text("Te has quedado sin oportunidades, ¿qué te gustaría hacer?",
+                            font_size = TamañosTexto.TEXTO.value,
+                            color = Colores.TEXTO.value,
+                            margin_y="10px"),
+
                     rx.hstack(
                         rx.button(
                             "Volver a jugar",
@@ -45,7 +52,7 @@ def modal_perdistes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
                     bg=Colores.BG_COMPONENTES.value,
                     border_radius=Tamaños.BORDER_RADIUS.value,
                     box_shadow="0 0 10px rgba(0, 0, 0, 0.25)",
-                    width="300px",
+                    width="350px",
                     text_align="center"
                 ),
                 style = modal
@@ -64,8 +71,15 @@ def modal_ganastes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
             # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es True
             rx.box(
                 rx.box(
-                    rx.text("Has ganado", font_size=TamañosTexto.TITULO.value, color=Colores.TITULO.value),
-                    rx.text("Lo has logrado que vas hacer ahora", margin_y="10px"),
+                    rx.heading("Has ganado",
+                            font_size=TamañosTexto.TITULO.value,
+                            color=Colores.TITULO.value),
+
+                    rx.text("Lo has logrado que vas hacer ahora",
+                            font_size = TamañosTexto.TEXTO.value,
+                            color = Colores.TEXTO.value,
+                            margin_y="10px"),
+
                     rx.hstack(
                         rx.button(
                             "Volver a jugar",
