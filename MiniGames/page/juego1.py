@@ -190,8 +190,8 @@ def pantalla_juego1() -> rx.Component:
             navbar(),
             texto_enunciado(),
             juego(),
-            modal_perdistes(EstadoJuego , estilos_boton),  # Aquí integramos el modal en la página
-            modal_ganastes(EstadoJuego , estilos_boton),
+            modal_perdistes(EstadoJuego),  # Aquí integramos el modal en la página
+            modal_ganastes(EstadoJuego),
             align_items="stretch",
             width="100%"
         ),
