@@ -3,6 +3,19 @@ import reflex as rx
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto
 
+modal =dict(
+    position="fixed",
+    top="50%",
+    left="50%",
+    transform="translate(-50%, -50%)",
+    bg="rgba(10, 20, 50, 0.9)",  # Fondo semitransparente para la superposición
+    width="100vw",
+    height="100vh",
+    display="flex",
+    justify_content="center",
+    align_items="center",
+    z_index="1000",  # Asegura que el modal esté por encima de otros elementos
+)
 
 def modal_perdistes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
     "Modal que se muestra cuando el jugador ha perdido."
@@ -35,17 +48,7 @@ def modal_perdistes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
                     width="300px",
                     text_align="center"
                 ),
-                position="fixed",
-                top="50%",
-                left="50%",
-                transform="translate(-50%, -50%)",
-                bg="rgba(0, 0, 0, 0.8)",  # Fondo semitransparente para la superposición
-                width="100vw",
-                height="100vh",
-                display="flex",
-                justify_content="center",
-                align_items="center",
-                z_index="1000",  # Asegura que el modal esté por encima de otros elementos
+                style = modal
             ),
         # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es False (un box vacío)
 
@@ -83,17 +86,7 @@ def modal_ganastes(EstadoJuego , estilos_boton ,modo = False ) -> rx.Component:
                     width="300px",
                     text_align="center"
                 ),
-                position="fixed",
-                top="50%",
-                left="50%",
-                transform="translate(-50%, -50%)",
-                bg="rgba(0, 0, 0, 0.8)",  # Fondo semitransparente para la superposición
-                width="100vw",
-                height="100vh",
-                display="flex",
-                justify_content="center",
-                align_items="center",
-                z_index="1000",  # Asegura que el modal esté por encima de otros elementos
+                style=modal
             ),
         # Este es el contenido que se muestra si EstadoJuego.var_mostrar_modal es False (un box vacío)
 
