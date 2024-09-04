@@ -43,3 +43,13 @@ juegos_movil_y_tableta = dict(
     align = "center",
     _hover = _hover_generico
     )
+
+botones = dict(
+    width= "150px",
+    heigth ="auto",
+    margin = Tamaños.MARGIN_PEQUEÑO.value,
+    padding = Tamaños.PADDING.value,
+    bg = Colores.SECUNDARIO.value,
+    align_text = "center",
+    _hover = _hover_generico
+)
