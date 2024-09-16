@@ -190,8 +190,8 @@ def pantalla_juego1() -> rx.Component:
             navbar(),
             texto_enunciado(),
             juego(),
-            modal_perdistes(EstadoJuego),  # Aquí integramos el modal en la página
-            modal_ganastes(EstadoJuego),
+            modal_perdistes(EstadoJuego,f"El numero correcto era {EstadoJuego.numero_random}"),  # Aquí integramos el modal en la página
+            modal_ganastes(EstadoJuego,f"El numero correcto siempre fue {EstadoJuego.numero_random}"),
             align_items="stretch",
             width="100%"
         ),
