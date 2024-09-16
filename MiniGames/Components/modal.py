@@ -17,7 +17,7 @@ modal =dict(
     z_index="1000",  # Asegura que el modal esté por encima de otros elementos
 )
 
-def modal_perdistes(EstadoJuego ) -> rx.Component:
+def modal_perdistes(EstadoJuego, otro_texto="" ) -> rx.Component:
     "Modal que se muestra cuando el jugador ha perdido."
 
 
@@ -33,7 +33,13 @@ def modal_perdistes(EstadoJuego ) -> rx.Component:
                 rx.text("Te has quedado sin oportunidades, ¿qué te gustaría hacer?",
                         font_size = TamañosTexto.TEXTO.value,
                         color = Colores.TEXTO.value,
-                        text_align = "left",
+                        text_align = "center",
+                        margin="10px"),
+
+                rx.text(otro_texto,
+                        font_size = TamañosTexto.TEXTO.value,
+                        color = Colores.TEXTO.value,
+                        text_align = "center",
                         margin="10px"),
 
                 rx.hstack(
@@ -63,7 +69,7 @@ def modal_perdistes(EstadoJuego ) -> rx.Component:
         rx.box()
     )
 
-def modal_ganastes(EstadoJuego ) -> rx.Component:
+def modal_ganastes(EstadoJuego,otro_texto="" ) -> rx.Component:
     "Modal que se muestra cuando el jugador ha perdido."
 
     return rx.cond(
@@ -81,6 +87,12 @@ def modal_ganastes(EstadoJuego ) -> rx.Component:
                         text_align = "left",
                         margin="10px"
                         ),
+
+                rx.text(otro_texto,
+                        font_size = TamañosTexto.TEXTO.value,
+                        color = Colores.TEXTO.value,
+                        text_align = "center",
+                        margin="10px"),
 
                 rx.hstack(
                     rx.button(
