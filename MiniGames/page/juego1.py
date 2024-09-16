@@ -105,7 +105,7 @@ def texto_enunciado() -> rx.Component:
                 EstadoJuego.var_texto,
                 font_size=TamañosTexto.TEXTO.value,
                 color=Colores.TEXTO.value,
-                align="center"
+                align="center",
             ),
             padding=Tamaños.PADDING.value,
             width="60vw",
@@ -151,17 +151,22 @@ def juego() -> rx.Component:
                             _hover = _hover_generico
                         ),
                             rx.button(
-                                rx.text(EstadoJuego.intentos ,
+                                rx.text("confirma✅",
                                         font_size = TamañosTexto.TEXTO.value ,
                                         color = Colores.TEXTO.value),
                                 bg=Colores.BG.value,
                                 border_radius="50em",
                                 border =Tamaños.BORDER.value,
-                                width="100px",
-                                height="100px",
+                                width="130px",
+                                height="130px",
                                 _hover = _hover_generico,
                                 on_click=EstadoJuego.actualizar_texto()
                         ),
+                            rx.text(
+                                f"Intentos : [{EstadoJuego.intentos}]",
+                                font_size = TamañosTexto.TITULO.value ,
+                                color = Colores.TITULO.value
+                            ),
                         align_items="center",
                     )
                 ),
