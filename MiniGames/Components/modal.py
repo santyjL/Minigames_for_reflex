@@ -39,7 +39,7 @@ def modal_perdistes(EstadoJuego, otro_texto="" ) -> rx.Component:
                 rx.text(otro_texto,
                         font_size = TamañosTexto.TEXTO.value,
                         color = Colores.TEXTO.value,
-                        text_align = "center",
+                        text_align = "left",
                         margin="10px"),
 
                 rx.hstack(
@@ -84,14 +84,14 @@ def modal_ganastes(EstadoJuego,otro_texto="" ) -> rx.Component:
                 rx.text("Lo has logrado que vas hacer ahora",
                         font_size = TamañosTexto.TEXTO.value,
                         color = Colores.TEXTO.value,
-                        text_align = "left",
+                        text_align = "center",
                         margin="10px"
                         ),
 
                 rx.text(otro_texto,
                         font_size = TamañosTexto.TEXTO.value,
                         color = Colores.TEXTO.value,
-                        text_align = "center",
+                        text_align = "left",
                         margin="10px"),
 
                 rx.hstack(
