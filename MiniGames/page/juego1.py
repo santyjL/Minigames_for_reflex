@@ -140,7 +140,7 @@ def juego() -> rx.Component:
                         ),
                         rx.text(
                             f"Intentos : [{EstadoJuego.intentos}]",
-                            font_size=["16px", "20px", "24px"],  # Tamaño adaptable
+                            font_size=["14px", "18px", "22px"],  # Tamaño adaptable
                             color=Colores.TITULO.value,
                         ),
                         align_items="center",
