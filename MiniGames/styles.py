@@ -45,7 +45,7 @@ juegos_movil_y_tableta = dict(
     )
 
 botones = dict(
-    width= "150px",
+    width= "100px",
     heigth ="auto",
     margin = Tamaños.MARGIN_PEQUEÑO.value,
     padding = Tamaños.PADDING.value,
