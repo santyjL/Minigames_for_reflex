@@ -125,7 +125,7 @@ def mobile_juegos() -> rx.Component:
                 padding=Tamaños.PADDING.value,
                 margin=Tamaños.MARGIN_MEDIANO.value,
                 bg=Colores.PRINCIPAL.value,
-                width="45vw",
+                width="48vw",
                 border_radius=Tamaños.BORDER_RADIUS.value,
                 border=Tamaños.BORDER.value,
                 text_align="center"
