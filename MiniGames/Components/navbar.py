@@ -32,7 +32,7 @@ def navbar() -> rx.Component:
                 ),
                 rx.hstack(
                     navbar_link("JUEGOS", routers.PRINCIPAL.value),
-                    navbar_link("FQA", routers.FQA.value),
+                    navbar_link("FAQ", routers.FQA.value),
                     justify="end",
                     spacing="5",
                 ),
@@ -59,7 +59,7 @@ def navbar() -> rx.Component:
                     ),
                     rx.menu.content(
                         rx.menu.item(navbar_link("JUEGOS" ,routers.PRINCIPAL.value) , color = Colores.TEXTO.value),
-                        rx.menu.item(navbar_link("FQA" , routers.FQA.value) , color = Colores.TEXTO.value),
+                        rx.menu.item(navbar_link("FAQ" , routers.FQA.value) , color = Colores.TEXTO.value),
                         bg=Colores.SECUNDARIO.value,
                     ),
                     justify="end",
