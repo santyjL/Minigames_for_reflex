@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 import reflex as rx
 
 
@@ -7,6 +9,7 @@ class classBase(rx.State):
     mostrar_modal_perdistes: bool = False  # Variable para manejar la visibilidad del modal de derrota
     mostrar_modal_ganastes: bool = False   # Variable para manejar la visibilidad del modal de victoria
 
+    @abstractmethod
     def reiniciar_juego(self):
         """Esta función debe ser capaz de regresar el juego a su estado original.
         Cada clase que herede de esta deberá implementar su propia versión."""

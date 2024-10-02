@@ -1,5 +1,6 @@
 import reflex as rx
 
+from MiniGames.Components.class_base import classBase
 from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
@@ -7,6 +8,10 @@ from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
 # Definimos los valores por defecto de las jugadas
 JUGADA_NPC = "?"
 JUGADA_JUGADOR = "🖖"
+
+class EstadoJuego(classBase):
+    pass
+
 
 # Función para crear los botones con los emojis de las jugadas
 def botones(emoji: str) -> rx.Component:
