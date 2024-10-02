@@ -1,20 +1,104 @@
 import reflex as rx
-
+import random
 from MiniGames.Components.class_base import classBase
 from MiniGames.Components.navbar import navbar
+from MiniGames.Components.modal import modal_perdistes , modal_ganastes
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
 
-# Definimos los valores por defecto de las jugadas
-JUGADA_NPC = "?"
-JUGADA_JUGADOR = "🖖"
-
 class EstadoJuego(classBase):
-    pass
+    jugada_npc:str= "?"
+    jugada_jugador:str= "?"
+    puntuacion_npc:int= 0
+    puntuacion_jugador:int= 0
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def logica(self):
+        if self.puntuacion_jugador < 5:
+            match (self.jugada_jugador, self.jugada_npc):
+                case (jugada, npc) if jugada == npc:
+                    pass
+
+                case ("🥌", "✂") | ("🥌", "🦎"):
+                    self.puntuacion_jugador += 1
+
+                case ("✂", "📋") | ("✂", "🦎"):
+                    self.puntuacion_jugador += 1
+
+                case ("📋", "🥌") | ("📋", "🖖"):
+                    self.puntuacion_jugador += 1
+
+                case ("🦎", "📋") | ("🦎", "🖖"):
+                    self.puntuacion_jugador += 1
+
+                case ("🖖", "🥌") | ("🖖", "✂"):
+                    self.puntuacion_jugador += 1
+
+                case _:
+                    self.puntuacion_npc += 1
+        else:
+            self.mostrar_modal_ganastes = True
+
+        if self.puntuacion_npc > 4 :
+            self.mostrar_modal_perdistes = True
+
+
+    def npc(self):
+        self.jugada_npc = random.choice(["🥌","📋","✂","🦎","🖖"])
+
+    def piedra(self):
+        self.jugada_jugador = "🥌"
+        self.npc()
+        self.logica()
+
+    def papel(self):
+        self.jugada_jugador = "📋"
+        self.npc()
+        self.logica()
+
+    def tijeras(self):
+        self.jugada_jugador = "✂"
+        self.npc()
+        self.logica()
+
+    def lagarto(self):
+        self.jugada_jugador = "🦎"
+        self.npc()
+        self.logica()
+
+    def spock(self):
+        self.jugada_jugador = "🖖"
+        self.npc()
+        self.logica()
+
+    def reiniciar_juego(self):
+        self.jugada_npc:str= "?"
+        self.jugada_jugador:str= "?"
+        self.puntuacion_npc:int= 0
+        self.puntuacion_jugador:int= 0
+        self.mostrar_modal_perdistes= False
+        self.mostrar_modal_ganastes= False
+
+    @rx.var
+    def var_jugada_npc(self) -> str:
+        return self.jugada_npc
+
+    @rx.var
+    def var_jugada_jugador(self) -> str:
+        return self.jugada_jugador
+
+    @rx.var
+    def var_puntuacion_jugador(self) -> int:
+        return self.puntuacion_jugador
+
+    @rx.var
+    def var_puntuacion_npc(self) -> int:
+        return self.puntuacion_npc
 
 # Función para crear los botones con los emojis de las jugadas
-def botones(emoji: str) -> rx.Component:
+def botones(emoji: str , event:EstadoJuego) -> rx.Component:
     """Crea un botón con un emoji representando una jugada."""
     return rx.button(
         rx.text(
@@ -26,11 +110,12 @@ def botones(emoji: str) -> rx.Component:
         border_radius=Tamaños.BORDER_RADIUS.value,
         padding=Tamaños.PADDING.value,
         border=Tamaños.BORDER.value,
+        on_click=event,
         _hover=_hover_generico
     )
 
 # Función para mostrar la puntuación
-def puntuacion(texto: str, valor: int) -> rx.Component:
+def puntuacion(texto: str, valor:EstadoJuego) -> rx.Component:
     """Muestra un cuadro con el texto (nombre del jugador/NPC) y su puntuación."""
     return rx.box(
         # Texto que muestra el nombre (NPC o Tú)
@@ -93,7 +178,7 @@ def bloque_juego() -> rx.Component:
                 rx.flex(
                     # Jugada del NPC
                     rx.box(
-                        rx.text(JUGADA_NPC, font_size=["80px", "100px", "120px"], color="white"),
+                        rx.text(EstadoJuego.jugada_npc, font_size=["80px", "100px", "120px"], color="white"),
                         bg=Colores.PRINCIPAL.value,
                         padding=Tamaños.PADDING.value,
                         border_radius=Tamaños.BORDER_RADIUS.value,
@@ -107,7 +192,7 @@ def bloque_juego() -> rx.Component:
                     ),
                     # Jugada del Jugador
                     rx.box(
-                        rx.text(JUGADA_JUGADOR, font_size=["80px", "100px", "120px"], color="white"),
+                        rx.text(EstadoJuego.jugada_jugador, font_size=["80px", "100px", "120px"], color="white"),
                         bg=Colores.PRINCIPAL.value,
                         padding=Tamaños.PADDING.value,
                         border_radius=Tamaños.BORDER_RADIUS.value,
@@ -130,11 +215,11 @@ def bloque_juego() -> rx.Component:
                 rx.separator(orientation="horizontal", size="3"),
                 # Flex para los botones de jugadas
                 rx.flex(
-                    botones("🥌"),  # Botón Piedra
-                    botones("📋"),  # Botón Papel
-                    botones("✂️"),  # Botón Tijeras
-                    botones("🦎"),  # Botón Lagarto
-                    botones("🖖"),  # Botón Spock
+                    botones("🥌", EstadoJuego.piedra),  # Botón Piedra
+                    botones("📋", EstadoJuego.papel),  # Botón Papel
+                    botones("✂️", EstadoJuego.tijeras),  # Botón Tijeras
+                    botones("🦎", EstadoJuego.lagarto),  # Botón Lagarto
+                    botones("🖖", EstadoJuego.spock),  # Botón Spock
                     direction="column",
                     justify="center",
                     align_items="center",
@@ -162,8 +247,8 @@ def desktop_juegos() -> rx.Component:
     return rx.hstack(
         # Sección de puntuaciones para el NPC y el jugador
         rx.vstack(
-            puntuacion("NPC", 0),
-            puntuacion("Tú", 3),
+            puntuacion("NPC", EstadoJuego.puntuacion_npc),
+            puntuacion("Tú", EstadoJuego.puntuacion_jugador),
             margin_x=Tamaños.MARGIN_MEDIANO.value
         ),
         bloque_juego(),
@@ -179,6 +264,8 @@ def pantalla_juego2() -> rx.Component:
         rx.vstack(
             navbar(),
             desktop_juegos(),
+            modal_ganastes(EstadoJuego, "Te la comes toda"),
+            modal_perdistes(EstadoJuego, "Has perdido cosita fea"),
             align_items="stretch"
         ),
         bg=Colores.BG.value,
