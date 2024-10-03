@@ -1,10 +1,33 @@
-import reflex as rx
 import random
+
+import reflex as rx
+
 from MiniGames.Components.class_base import classBase
+from MiniGames.Components.modal import modal_ganastes, modal_perdistes
 from MiniGames.Components.navbar import navbar
-from MiniGames.Components.modal import modal_perdistes , modal_ganastes
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
+
+textos_victoria: list[str]= [
+    "¡Increíble jugada! Has vencido con una lógica imbatible.",
+    "¡Tu mente afilada como tijeras ha cortado cualquier duda, victoria tuya!",
+    "Papel envolvió la estrategia enemiga. ¡Qué movimiento maestro!",
+    "Lagarto devora con astucia. ¡El trono es tuyo!",
+    "Spock miraría con orgullo tu victoria lógica y aplastante.",
+    "Tu piedra ha aplastado más que rivales, ¡ha cimentado tu triunfo!",
+    "¡Es oficial, eres un estratega digno de leyenda!"
+    ]
+
+texto_derrota: list[str] = [
+    "Hoy no fue tu día, pero los grandes vuelven más fuertes.",
+    "Caíste, pero hasta Spock sabe que perder es aprender.",
+    "Tu tijera fue desafilada... por esta vez.",
+    "Lagarto fue aplastado, pero la próxima vez mordisquearás la victoria.",
+    "El universo se inclinó ante Spock, pero tú te alzarás de nuevo.",
+    "Piedra se quebró esta vez, pero hay muchas más en el camino.",
+    "No fue suficiente, pero como dicen, ¡cada derrota es una lección!"
+    ]
+
 
 class EstadoJuego(classBase):
     jugada_npc:str= "?"
@@ -16,7 +39,7 @@ class EstadoJuego(classBase):
         super().__init__(*args, **kwargs)
 
     def logica(self):
-        if self.puntuacion_jugador < 5:
+        if self.puntuacion_jugador < 4:
             match (self.jugada_jugador, self.jugada_npc):
                 case (jugada, npc) if jugada == npc:
                     pass
@@ -39,6 +62,7 @@ class EstadoJuego(classBase):
                 case _:
                     self.puntuacion_npc += 1
         else:
+            self.puntuacion_jugador += 1
             self.mostrar_modal_ganastes = True
 
         if self.puntuacion_npc > 4 :
@@ -264,8 +288,8 @@ def pantalla_juego2() -> rx.Component:
         rx.vstack(
             navbar(),
             desktop_juegos(),
-            modal_ganastes(EstadoJuego, "Te la comes toda"),
-            modal_perdistes(EstadoJuego, "Has perdido cosita fea"),
+            modal_ganastes(EstadoJuego, random.choice(textos_victoria)),
+            modal_perdistes(EstadoJuego, random.choice(texto_derrota)),
             align_items="stretch"
         ),
         bg=Colores.BG.value,
