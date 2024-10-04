@@ -183,13 +183,19 @@ def sistema_de_victoria_text() -> rx.Component:
         "🖖  >>  ✂",  # Spock rompe Tijeras
     ]
 
-    return rx.box(
-        # Iteramos sobre la lista de reglas para generar los textos
-        *(rx.text(regla, font_size=TamañosTexto.TITULO.value, color=Colores.TEXTO.value, align="center") for regla in reglas),
-        height="80vh",
-        bg=Colores.BG_COMPONENTES.value,
-        width="20vw",
-        margin_x=Tamaños.MARGIN_MEDIANO.value
+    return rx.center(
+            rx.box(
+            # Iteramos sobre la lista de reglas para generar los textos
+            *(rx.text(regla,
+                    font_size=TamañosTexto.SUBTITULO.value,
+                    color=Colores.TEXTO.value,
+                    align="center") for regla in reglas),
+            height="auto",
+            width="20vw",
+            bg=Colores.BG_COMPONENTES.value,
+            margin=Tamaños.MARGIN_MEDIANO.value,
+            padding= Tamaños.PADDING.value
+        )
     )
 
 # Bloque principal del juego con las jugadas del NPC y del jugador, y los botones para elegir jugada
@@ -267,16 +273,30 @@ def bloque_juego() -> rx.Component:
 
 # Componente que representa la disposición principal del juego en pantallas más grandes
 def desktop_juegos() -> rx.Component:
-    """Genera la vista principal de la pantalla del juego."""
-    return rx.hstack(
-        # Sección de puntuaciones para el NPC y el jugador
-        rx.vstack(
-            puntuacion("NPC", EstadoJuego.puntuacion_npc),
-            puntuacion("Tú", EstadoJuego.puntuacion_jugador),
-            margin_x=Tamaños.MARGIN_MEDIANO.value
-        ),
+    return rx.desktop_only(
+        rx.hstack(
+            rx.vstack(
+                puntuacion("NPC", EstadoJuego.puntuacion_npc),
+                puntuacion("Tú", EstadoJuego.puntuacion_jugador),
+                margin_x=Tamaños.MARGIN_MEDIANO.value
+            ),
+            bloque_juego(),
+            rx.center(
+                sistema_de_victoria_text(),
+            ),
+            margin_y=25
+        )
+    )
+
+def mobile_and_tablets_juegos() -> rx.Component:
+    return rx.mobile_and_tablet(
         bloque_juego(),
-        sistema_de_victoria_text(),
+        rx.hstack(
+                puntuacion("NPC", EstadoJuego.puntuacion_npc),
+                puntuacion("Tú", EstadoJuego.puntuacion_jugador),
+                margin_x=Tamaños.MARGIN_MEDIANO.value,
+
+        ),
         margin_y=25
     )
 
@@ -287,7 +307,10 @@ def pantalla_juego2() -> rx.Component:
     return rx.box(
         rx.vstack(
             navbar(),
-            desktop_juegos(),
+            rx.box(
+                desktop_juegos(),
+                mobile_and_tablets_juegos(),
+            ),
             modal_ganastes(EstadoJuego, random.choice(textos_victoria)),
             modal_perdistes(EstadoJuego, random.choice(texto_derrota)),
             align_items="stretch"
