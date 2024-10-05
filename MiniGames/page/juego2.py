@@ -1,7 +1,5 @@
 import random
-
 import reflex as rx
-
 from MiniGames.Components.class_base import classBase
 from MiniGames.Components.modal import modal_ganastes, modal_perdistes
 from MiniGames.Components.navbar import navbar
@@ -28,7 +26,8 @@ texto_derrota: list[str] = [
     "No fue suficiente, pero como dicen, ¡cada derrota es una lección!"
     ]
 
-
+#region Logica
+# En esta clase esta toda la logica del juego
 class EstadoJuego(classBase):
     jugada_npc:str= "?"
     jugada_jugador:str= "?"
@@ -106,30 +105,35 @@ class EstadoJuego(classBase):
         self.mostrar_modal_ganastes= False
 
     @rx.var
-    def var_jugada_npc(self) -> str:
-        return self.jugada_npc
+    def var_jugada_npc(self) -> str: return self.jugada_npc
 
     @rx.var
-    def var_jugada_jugador(self) -> str:
-        return self.jugada_jugador
+    def var_jugada_jugador(self) -> str: return self.jugada_jugador
 
     @rx.var
-    def var_puntuacion_jugador(self) -> int:
-        return self.puntuacion_jugador
+    def var_puntuacion_jugador(self) -> int: return self.puntuacion_jugador
 
     @rx.var
-    def var_puntuacion_npc(self) -> int:
-        return self.puntuacion_npc
+    def var_puntuacion_npc(self) -> int: return self.puntuacion_npc
 
+#region Botones
 # Función para crear los botones con los emojis de las jugadas
 def botones(emoji: str , event:EstadoJuego) -> rx.Component:
     """Crea un botón con un emoji representando una jugada."""
     return rx.button(
-        rx.text(
-            emoji,
-            font_size=TamañosTexto.SUBTITULO.value
+        rx.desktop_only(
+            rx.text(
+                emoji,
+                font_size=TamañosTexto.SUBTITULO.value
+            ),
         ),
-        font_size=["16px", "18px", "20px"],
+        rx.mobile_and_tablet(
+            rx.text(
+                emoji,
+                font_size=TamañosTexto.TEXTO.value
+            ),
+        ),
+        font_size=["10px","12px","14px","16px", "18px", "20px"],
         bg=Colores.SECUNDARIO.value,
         border_radius=Tamaños.BORDER_RADIUS.value,
         padding=Tamaños.PADDING.value,
@@ -138,6 +142,7 @@ def botones(emoji: str , event:EstadoJuego) -> rx.Component:
         _hover=_hover_generico
     )
 
+#region Puntuación
 # Función para mostrar la puntuación
 def puntuacion(texto: str, valor:EstadoJuego) -> rx.Component:
     """Muestra un cuadro con el texto (nombre del jugador/NPC) y su puntuación."""
@@ -158,38 +163,31 @@ def puntuacion(texto: str, valor:EstadoJuego) -> rx.Component:
                 align="center",
                 _hover=_hover_generico,
             ),
+            rx.desktop_only(width="12vw"),
+            rx.mobile_and_tablet(width="95%"),
             bg=Colores.BG_COMPONENTES.value,
             border_radius=Tamaños.BORDER_RADIUS,
             border=Tamaños.BORDER.value,
             padding=Tamaños.PADDING.value,
-            width="15vw"
         ),
-        _hover=_hover_generico
+        rx.mobile_and_tablet(width="37vw"),
+        _hover=_hover_generico,
     )
 
+#region Reglas
 # Función para mostrar las reglas del juego
 def sistema_de_victoria_text() -> rx.Component:
     """Muestra un cuadro con las reglas de quién gana a quién en el juego."""
     reglas = [
-        "🥌  >>  ✂",  # Piedra aplasta Tijeras
-        "🥌  >>  🦎",  # Piedra aplasta Lagarto
-        "✂  >>  🦎",  # Tijeras decapitan Lagarto
-        "✂  >>  📋",  # Tijeras cortan Papel
-        "📋  >>  🥌",  # Papel envuelve Piedra
-        "📋  >>  🖖",  # Papel refuta a Spock
-        "🦎  >>  📋",  # Lagarto devora Papel
-        "🦎  >>  🖖",  # Lagarto envenena a Spock
-        "🖖  >>  🥌",  # Spock vaporiza Piedra
-        "🖖  >>  ✂",  # Spock rompe Tijeras
+        "🥌  >>  ✂", "🥌  >>  🦎", "✂  >>  🦎", "✂  >>  📋", "📋  >>  🥌",
+        "📋  >>  🖖",  "🦎  >>  📋", "🦎  >>  🖖","🖖  >>  🥌", "🖖  >>  ✂"
     ]
 
     return rx.center(
             rx.box(
             # Iteramos sobre la lista de reglas para generar los textos
-            *(rx.text(regla,
-                    font_size=TamañosTexto.SUBTITULO.value,
-                    color=Colores.TEXTO.value,
-                    align="center") for regla in reglas),
+            *(rx.text(regla,font_size=TamañosTexto.SUBTITULO.value,
+                      color=Colores.TEXTO.value,align="center") for regla in reglas),
             height="auto",
             width="20vw",
             bg=Colores.BG_COMPONENTES.value,
@@ -198,64 +196,79 @@ def sistema_de_victoria_text() -> rx.Component:
         )
     )
 
+#region Jugadas
+# Función que muestra las jugadas del jugador y del NPC
+def jugadas(direccion:str= "column") -> rx.Component:
+    "Flex para las jugadas del NPC y del jugador"
+    return rx.box(
+        rx.flex(
+            # Jugada del NPC
+            rx.box(
+                rx.text(EstadoJuego.jugada_npc, font_size=["80px", "100px", "120px"]),
+                bg=Colores.PRINCIPAL.value,
+                padding=Tamaños.PADDING.value,
+                border_radius=Tamaños.BORDER_RADIUS.value,
+                border=Tamaños.BORDER.value,
+                justify="center",
+                align_items="center",
+                text_align="center",
+                width="95%",
+                height="45%",
+                margin=Tamaños.MARGIN_PEQUEÑO.value
+            ),
+            # Jugada del Jugador
+            rx.box(
+                rx.text(EstadoJuego.jugada_jugador, font_size=["80px", "100px", "120px"]),
+                bg=Colores.PRINCIPAL.value,
+                padding=Tamaños.PADDING.value,
+                border_radius=Tamaños.BORDER_RADIUS.value,
+                border=Tamaños.BORDER.value,
+                justify="center",
+                align_items="center",
+                text_align="center",
+                width="95%",
+                height="45%",
+                margin=Tamaños.MARGIN_PEQUEÑO.value
+            ),
+            direction=direccion,
+            justify="center",
+            align_items="center",
+            width="95%",
+            bg=Colores.SECUNDARIO.value,
+            border_radius=Tamaños.BORDER_RADIUS.value,
+            border=Tamaños.BORDER.value
+        ),
+        rx.desktop_only(width="35vw"),
+        rx.mobile_and_tablet(width="80vw")
+    )
+
+#region botones_del_juego
+# Fucion donde se encuetran los botones para jugar
+def botones_de_accion(direccion:str = "column") ->rx.Component:
+    return rx.box(
+        rx.flex(
+            botones("🥌", EstadoJuego.piedra),
+            botones("📋", EstadoJuego.papel),
+            botones("✂️", EstadoJuego.tijeras),
+            botones("🦎", EstadoJuego.lagarto),
+            botones("🖖", EstadoJuego.spock),
+            direction=direccion,
+            justify="center",
+            align_items="center",
+            gap="10px",
+            width="auto"
+        ),
+    )
+
+#region Juego
 # Bloque principal del juego con las jugadas del NPC y del jugador, y los botones para elegir jugada
-def bloque_juego() -> rx.Component:
+def bloque_juego_pc() -> rx.Component:
     """Genera el bloque central del juego, incluyendo las jugadas y los botones."""
     return rx.center(
         rx.box(
             rx.hstack(
-                # Flex para las jugadas del NPC y del jugador
-                rx.flex(
-                    # Jugada del NPC
-                    rx.box(
-                        rx.text(EstadoJuego.jugada_npc, font_size=["80px", "100px", "120px"], color="white"),
-                        bg=Colores.PRINCIPAL.value,
-                        padding=Tamaños.PADDING.value,
-                        border_radius=Tamaños.BORDER_RADIUS.value,
-                        border=Tamaños.BORDER.value,
-                        justify="center",
-                        align_items="center",
-                        text_align="center",
-                        width="95%",
-                        height="45%",
-                        margin=Tamaños.MARGIN_PEQUEÑO.value
-                    ),
-                    # Jugada del Jugador
-                    rx.box(
-                        rx.text(EstadoJuego.jugada_jugador, font_size=["80px", "100px", "120px"], color="white"),
-                        bg=Colores.PRINCIPAL.value,
-                        padding=Tamaños.PADDING.value,
-                        border_radius=Tamaños.BORDER_RADIUS.value,
-                        border=Tamaños.BORDER.value,
-                        justify="center",
-                        align_items="center",
-                        text_align="center",
-                        width="95%",
-                        height="45%",
-                        margin=Tamaños.MARGIN_PEQUEÑO.value
-                    ),
-                    direction="column",
-                    justify="center",
-                    align_items="center",
-                    width="55%",
-                    bg=Colores.SECUNDARIO.value,
-                    border_radius=Tamaños.BORDER_RADIUS.value,
-                    border=Tamaños.BORDER.value
-                ),
-                rx.separator(orientation="horizontal", size="3"),
-                # Flex para los botones de jugadas
-                rx.flex(
-                    botones("🥌", EstadoJuego.piedra),  # Botón Piedra
-                    botones("📋", EstadoJuego.papel),  # Botón Papel
-                    botones("✂️", EstadoJuego.tijeras),  # Botón Tijeras
-                    botones("🦎", EstadoJuego.lagarto),  # Botón Lagarto
-                    botones("🖖", EstadoJuego.spock),  # Botón Spock
-                    direction="column",
-                    justify="center",
-                    align_items="center",
-                    gap="10px",
-                    width="25vw"
-                ),
+                jugadas(),
+                botones_de_accion(),
                 width="100vw",
                 height="100vh",
                 justify_content="space-between",
@@ -263,7 +276,7 @@ def bloque_juego() -> rx.Component:
             ),
             bg=Colores.BG_COMPONENTES.value,
             width="55vw",
-            height="80vh",
+            height="75vh",
             padding=Tamaños.PADDING.value,
             display="flex",
             justify="center",
@@ -280,7 +293,7 @@ def desktop_juegos() -> rx.Component:
                 puntuacion("Tú", EstadoJuego.puntuacion_jugador),
                 margin_x=Tamaños.MARGIN_MEDIANO.value
             ),
-            bloque_juego(),
+            bloque_juego_pc(),
             rx.center(
                 sistema_de_victoria_text(),
             ),
@@ -290,16 +303,37 @@ def desktop_juegos() -> rx.Component:
 
 def mobile_and_tablets_juegos() -> rx.Component:
     return rx.mobile_and_tablet(
-        bloque_juego(),
-        rx.hstack(
-                puntuacion("NPC", EstadoJuego.puntuacion_npc),
-                puntuacion("Tú", EstadoJuego.puntuacion_jugador),
-                margin_x=Tamaños.MARGIN_MEDIANO.value,
-
+        rx.center(
+            rx.box(
+                rx.center(
+                    jugadas(direccion="row"),
+                ),
+            rx.separator(orientation="vertical",size="2"),
+                rx.center(
+                    rx.hstack(
+                            puntuacion("NPC", EstadoJuego.puntuacion_npc),
+                            puntuacion("Tú", EstadoJuego.puntuacion_jugador),
+                            margin_x=Tamaños.MARGIN_GRANDE.value,
+                            width="80vw",
+                    ),
+                ),
+            bg = Colores.BG_COMPONENTES.value,
+            padding=Tamaños.PADDING.value,
+            width="95vw"
+            ),
+        ),
+        rx.box(
+            botones_de_accion(direccion="row"),
+            bg= Colores.BG_COMPONENTES.value,
+            padding_y= "0.5em",
+            padding_x="0px",
+            border_radius= Tamaños.BORDER_RADIUS.value,
+            margin=Tamaños.MARGIN_MEDIANO.value
         ),
         margin_y=25
     )
 
+#region Index
 # Página del juego
 @rx.page(route=routers.PIEDRA_PAPEL_TIJERAS.value)
 def pantalla_juego2() -> rx.Component:
