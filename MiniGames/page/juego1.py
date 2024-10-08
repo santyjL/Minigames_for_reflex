@@ -6,7 +6,7 @@ from MiniGames.Components.class_base import classBase
 from MiniGames.Components.modal import modal_ganastes, modal_perdistes
 from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
-from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
+from MiniGames.styles import Colores, Tamaños, _hover_generico
 
 # Estilos comunes ajustados para ser responsivos
 estilos_boton = {
