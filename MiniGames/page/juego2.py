@@ -1,5 +1,7 @@
 import random
+
 import reflex as rx
+
 from MiniGames.Components.class_base import classBase
 from MiniGames.Components.modal import modal_ganastes, modal_perdistes
 from MiniGames.Components.navbar import navbar
