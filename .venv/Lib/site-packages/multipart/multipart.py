@@ -7,15 +7,20 @@ import sys
 import tempfile
 from email.message import Message
 from enum import IntEnum
-from io import BytesIO
+from io import BufferedRandom, BytesIO
 from numbers import Number
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from .decoders import Base64Decoder, QuotedPrintableDecoder
 from .exceptions import FileError, FormParserError, MultipartParseError, QuerystringParseError
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Callable, TypedDict
+    from typing import Any, Callable, Literal, Protocol, TypedDict
+
+    from typing_extensions import TypeAlias
+
+    class SupportsRead(Protocol):
+        def read(self, __n: int) -> bytes: ...
 
     class QuerystringCallbacks(TypedDict, total=False):
         on_field_start: Callable[[], None]
@@ -33,14 +38,14 @@ if TYPE_CHECKING:  # pragma: no cover
         on_part_begin: Callable[[], None]
         on_part_data: Callable[[bytes, int, int], None]
         on_part_end: Callable[[], None]
-        on_headers_begin: Callable[[], None]
+        on_header_begin: Callable[[], None]
         on_header_field: Callable[[bytes, int, int], None]
         on_header_value: Callable[[bytes, int, int], None]
         on_header_end: Callable[[], None]
         on_headers_finished: Callable[[], None]
         on_end: Callable[[], None]
 
-    class FormParserConfig(TypedDict, total=False):
+    class FormParserConfig(TypedDict):
         UPLOAD_DIR: str | None
         UPLOAD_KEEP_FILENAME: bool
         UPLOAD_KEEP_EXTENSIONS: bool
@@ -49,12 +54,47 @@ if TYPE_CHECKING:  # pragma: no cover
         MAX_BODY_SIZE: float
 
     class FileConfig(TypedDict, total=False):
-        UPLOAD_DIR: str | None
+        UPLOAD_DIR: str | bytes | None
         UPLOAD_DELETE_TMP: bool
         UPLOAD_KEEP_FILENAME: bool
         UPLOAD_KEEP_EXTENSIONS: bool
         MAX_MEMORY_FILE_SIZE: int
 
+    class _FormProtocol(Protocol):
+        def write(self, data: bytes) -> int: ...
+
+        def finalize(self) -> None: ...
+
+        def close(self) -> None: ...
+
+    class FieldProtocol(_FormProtocol, Protocol):
+        def __init__(self, name: bytes | None) -> None: ...
+
+        def set_none(self) -> None: ...
+
+    class FileProtocol(_FormProtocol, Protocol):
+        def __init__(self, file_name: bytes | None, field_name: bytes | None, config: FileConfig) -> None: ...
+
+    OnFieldCallback = Callable[[FieldProtocol], None]
+    OnFileCallback = Callable[[FileProtocol], None]
+
+    CallbackName: TypeAlias = Literal[
+        "start",
+        "data",
+        "end",
+        "field_start",
+        "field_name",
+        "field_data",
+        "field_end",
+        "part_begin",
+        "part_data",
+        "part_end",
+        "header_begin",
+        "header_field",
+        "header_value",
+        "header_end",
+        "headers_finished",
+    ]
 
 # Unique missing object.
 _missing = object()
@@ -111,28 +151,20 @@ LOWER_A = b"a"[0]
 LOWER_Z = b"z"[0]
 NULL = b"\x00"[0]
 
-
-# Lower-casing a character is different, because of the difference between
-# str on Py2, and bytes on Py3.  Same with getting the ordinal value of a byte,
-# and joining a list of bytes together.
-# These functions abstract that.
-def lower_char(c):
-    return c | 0x20
-
-
-def ord_char(c):
-    return c
-
-
-def join_bytes(b):
-    return bytes(list(b))
+# fmt: off
+# Mask for ASCII characters that can be http tokens.
+# Per RFC7230 - 3.2.6, this is all alpha-numeric characters
+# and these: !#$%&'*+-.^_`|~
+TOKEN_CHARS_SET = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    b"abcdefghijklmnopqrstuvwxyz"
+    b"0123456789"
+    b"!#$%&'*+-.^_`|~")
+# fmt: on
 
 
-def parse_options_header(value: str | bytes) -> tuple[bytes, dict[bytes, bytes]]:
-    """
-    Parses a Content-Type header into a value in the following format:
-        (content_type, {parameters})
-    """
+def parse_options_header(value: str | bytes | None) -> tuple[bytes, dict[bytes, bytes]]:
+    """Parses a Content-Type header into a value in the following format: (content_type, {parameters})."""
     # Uses email.message.Message to parse the header as described in PEP 594.
     # Ref: https://peps.python.org/pep-0594/#cgi
     if not value:
@@ -157,7 +189,7 @@ def parse_options_header(value: str | bytes) -> tuple[bytes, dict[bytes, bytes]]
     # If there were no parameters, this would have already returned above
     assert params, "At least the content type value should be present"
     ctype = params.pop(0)[0].encode("latin-1")
-    options = {}
+    options: dict[bytes, bytes] = {}
     for param in params:
         key, value = param
         # If the value returned from get_params() is a 3-tuple, the last
@@ -187,10 +219,11 @@ class Field:
     will be called when data is written to the Field, and when the Field is
     finalized, respectively.
 
-    :param name: the name of the form field
+    Args:
+        name: The name of the form field.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: bytes | None) -> None:
         self._name = name
         self._value: list[bytes] = []
 
@@ -198,14 +231,17 @@ class Field:
         self._cache = _missing
 
     @classmethod
-    def from_value(cls, name: str, value: bytes | None) -> Field:
+    def from_value(cls, name: bytes, value: bytes | None) -> Field:
         """Create an instance of a :class:`Field`, and set the corresponding
         value - either None or an actual value.  This method will also
         finalize the Field itself.
 
-        :param name: the name of the form field
-        :param value: the value of the form field - either a bytestring or
-                      None
+        Args:
+            name: the name of the form field.
+            value: the value of the form field - either a bytestring or None.
+
+        Returns:
+            A new instance of a [`Field`][multipart.Field].
         """
 
         f = cls(name)
@@ -219,7 +255,11 @@ class Field:
     def write(self, data: bytes) -> int:
         """Write some data into the form field.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the field.
+
+        Returns:
+            The number of bytes written.
         """
         return self.on_data(data)
 
@@ -227,7 +267,11 @@ class Field:
         """This method is a callback that will be called whenever data is
         written to the Field.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the field.
+
+        Returns:
+            The number of bytes written.
         """
         self._value.append(data)
         self._cache = _missing
@@ -260,16 +304,17 @@ class Field:
         self._cache = None
 
     @property
-    def field_name(self) -> str:
+    def field_name(self) -> bytes | None:
         """This property returns the name of the field."""
         return self._name
 
     @property
-    def value(self):
+    def value(self) -> bytes | None:
         """This property returns the value of the form field."""
         if self._cache is _missing:
             self._cache = b"".join(self._value)
 
+        assert isinstance(self._cache, bytes) or self._cache is None
         return self._cache
 
     def __eq__(self, other: object) -> bool:
@@ -279,7 +324,7 @@ class Field:
             return NotImplemented
 
     def __repr__(self) -> str:
-        if len(self.value) > 97:
+        if self.value is not None and len(self.value) > 97:
             # We get the repr, and then insert three dots before the final
             # quote.
             v = repr(self.value[:97])[:-1] + "...'"
@@ -297,65 +342,28 @@ class File:
     There are some options that can be passed to the File to change behavior
     of the class.  Valid options are as follows:
 
-    .. list-table::
-       :widths: 15 5 5 30
-       :header-rows: 1
+    | Name                  | Type  | Default | Description |
+    |-----------------------|-------|---------|-------------|
+    | UPLOAD_DIR            | `str` | None    | The directory to store uploaded files in. If this is None, a temporary file will be created in the system's standard location. |
+    | UPLOAD_DELETE_TMP     | `bool`| True    | Delete automatically created TMP file |
+    | UPLOAD_KEEP_FILENAME  | `bool`| False   | Whether or not to keep the filename of the uploaded file. If True, then the filename will be converted to a safe representation (e.g. by removing any invalid path segments), and then saved with the same name). Otherwise, a temporary name will be used. |
+    | UPLOAD_KEEP_EXTENSIONS| `bool`| False   | Whether or not to keep the uploaded file's extension. If False, the file will be saved with the default temporary extension (usually ".tmp"). Otherwise, the file's extension will be maintained. Note that this will properly combine with the UPLOAD_KEEP_FILENAME setting. |
+    | MAX_MEMORY_FILE_SIZE  | `int` | 1 MiB   | The maximum number of bytes of a File to keep in memory. By default, the contents of a File are kept into memory until a certain limit is reached, after which the contents of the File are written to a temporary file. This behavior can be disabled by setting this value to an appropriately large value (or, for example, infinity, such as `float('inf')`. |
 
-       * - Name
-         - Type
-         - Default
-         - Description
-       * - UPLOAD_DIR
-         - `str`
-         - None
-         - The directory to store uploaded files in.  If this is None, a
-           temporary file will be created in the system's standard location.
-       * - UPLOAD_DELETE_TMP
-         - `bool`
-         - True
-         - Delete automatically created TMP file
-       * - UPLOAD_KEEP_FILENAME
-         - `bool`
-         - False
-         - Whether or not to keep the filename of the uploaded file.  If True,
-           then the filename will be converted to a safe representation (e.g.
-           by removing any invalid path segments), and then saved with the
-           same name).  Otherwise, a temporary name will be used.
-       * - UPLOAD_KEEP_EXTENSIONS
-         - `bool`
-         - False
-         - Whether or not to keep the uploaded file's extension.  If False, the
-           file will be saved with the default temporary extension (usually
-           ".tmp").  Otherwise, the file's extension will be maintained.  Note
-           that this will properly combine with the UPLOAD_KEEP_FILENAME
-           setting.
-       * - MAX_MEMORY_FILE_SIZE
-         - `int`
-         - 1 MiB
-         - The maximum number of bytes of a File to keep in memory.  By
-           default, the contents of a File are kept into memory until a certain
-           limit is reached, after which the contents of the File are written
-           to a temporary file.  This behavior can be disabled by setting this
-           value to an appropriately large value (or, for example, infinity,
-           such as `float('inf')`.
+    Args:
+        file_name: The name of the file that this [`File`][multipart.File] represents.
+        field_name: The name of the form field that this file was uploaded with.  This can be None, if, for example,
+            the file was uploaded with Content-Type application/octet-stream.
+        config: The configuration for this File.  See above for valid configuration keys and their corresponding values.
+    """  # noqa: E501
 
-    :param file_name: The name of the file that this :class:`File` represents
-
-    :param field_name: The field name that uploaded this file.  Note that this
-                       can be None, if, for example, the file was uploaded
-                       with Content-Type application/octet-stream
-
-    :param config: The configuration for this File.  See above for valid
-                   configuration keys and their corresponding values.
-    """
-
-    def __init__(self, file_name: bytes | None, field_name: bytes | None = None, config: FileConfig = {}):
+    def __init__(self, file_name: bytes | None, field_name: bytes | None = None, config: FileConfig = {}) -> None:
         # Save configuration, set other variables default.
         self.logger = logging.getLogger(__name__)
         self._config = config
         self._in_memory = True
         self._bytes_written = 0
-        self._fileobj = BytesIO()
+        self._fileobj: BytesIO | BufferedRandom = BytesIO()
 
         # Save the provided field/file name.
         self._field_name = field_name
@@ -363,7 +371,7 @@ class File:
 
         # Our actual file name is None by default, since, depending on our
         # config, we may not actually use the provided name.
-        self._actual_file_name = None
+        self._actual_file_name: bytes | None = None
 
         # Split the extension from the filename.
         if file_name is not None:
@@ -384,14 +392,14 @@ class File:
         return self._file_name
 
     @property
-    def actual_file_name(self):
+    def actual_file_name(self) -> bytes | None:
         """The file name that this file is saved as.  Will be None if it's not
         currently saved on disk.
         """
         return self._actual_file_name
 
     @property
-    def file_object(self):
+    def file_object(self) -> BytesIO | BufferedRandom:
         """The file object that we're currently writing to.  Note that this
         will either be an instance of a :class:`io.BytesIO`, or a regular file
         object.
@@ -399,7 +407,7 @@ class File:
         return self._fileobj
 
     @property
-    def size(self):
+    def size(self) -> int:
         """The total size of this file, counted as the number of bytes that
         currently have been written to the file.
         """
@@ -446,7 +454,7 @@ class File:
         # Close the old file object.
         old_fileobj.close()
 
-    def _get_disk_file(self):
+    def _get_disk_file(self) -> BufferedRandom:
         """This function is responsible for getting a file object on-disk for us."""
         self.logger.info("Opening a file on disk")
 
@@ -454,6 +462,7 @@ class File:
         keep_filename = self._config.get("UPLOAD_KEEP_FILENAME", False)
         keep_extensions = self._config.get("UPLOAD_KEEP_EXTENSIONS", False)
         delete_tmp = self._config.get("UPLOAD_DELETE_TMP", True)
+        tmp_file: None | BufferedRandom = None
 
         # If we have a directory and are to keep the filename...
         if file_dir is not None and keep_filename:
@@ -461,11 +470,9 @@ class File:
 
             # Build our filename.
             # TODO: what happens if we don't have a filename?
-            fname = self._file_base
-            if keep_extensions:
-                fname = fname + self._ext
+            fname = self._file_base + self._ext if keep_extensions else self._file_base
 
-            path = os.path.join(file_dir, fname)
+            path = os.path.join(file_dir, fname)  # type: ignore[arg-type]
             try:
                 self.logger.info("Opening file: %r", path)
                 tmp_file = open(path, "w+b")
@@ -478,56 +485,53 @@ class File:
             # Build options array.
             # Note that on Python 3, tempfile doesn't support byte names.  We
             # encode our paths using the default filesystem encoding.
-            options = {}
-            if keep_extensions:
-                ext = self._ext
-                if isinstance(ext, bytes):
-                    ext = ext.decode(sys.getfilesystemencoding())
+            suffix = self._ext.decode(sys.getfilesystemencoding()) if keep_extensions else None
 
-                options["suffix"] = ext
-            if file_dir is not None:
-                d = file_dir
-                if isinstance(d, bytes):
-                    d = d.decode(sys.getfilesystemencoding())
-
-                options["dir"] = d
-            options["delete"] = delete_tmp
+            if file_dir is None:
+                dir = None
+            elif isinstance(file_dir, bytes):
+                dir = file_dir.decode(sys.getfilesystemencoding())
+            else:
+                dir = file_dir  # pragma: no cover
 
             # Create a temporary (named) file with the appropriate settings.
-            self.logger.info("Creating a temporary file with options: %r", options)
+            self.logger.info(
+                "Creating a temporary file with options: %r", {"suffix": suffix, "delete": delete_tmp, "dir": dir}
+            )
             try:
-                tmp_file = tempfile.NamedTemporaryFile(**options)
+                tmp_file = cast(BufferedRandom, tempfile.NamedTemporaryFile(suffix=suffix, delete=delete_tmp, dir=dir))
             except OSError:
                 self.logger.exception("Error creating named temporary file")
                 raise FileError("Error creating named temporary file")
 
-            fname = tmp_file.name
-
+            assert tmp_file is not None
             # Encode filename as bytes.
-            if isinstance(fname, str):
-                fname = fname.encode(sys.getfilesystemencoding())
+            if isinstance(tmp_file.name, str):
+                fname = tmp_file.name.encode(sys.getfilesystemencoding())
+            else:
+                fname = cast(bytes, tmp_file.name)  # pragma: no cover
 
         self._actual_file_name = fname
         return tmp_file
 
-    def write(self, data: bytes):
+    def write(self, data: bytes) -> int:
         """Write some data to the File.
 
         :param data: a bytestring
         """
         return self.on_data(data)
 
-    def on_data(self, data: bytes):
+    def on_data(self, data: bytes) -> int:
         """This method is a callback that will be called whenever data is
         written to the File.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the file.
+
+        Returns:
+            The number of bytes written.
         """
-        pos = self._fileobj.tell()
         bwritten = self._fileobj.write(data)
-        # true file objects write  returns None
-        if bwritten is None:
-            bwritten = self._fileobj.tell() - pos
 
         # If the bytes written isn't the same as the length, just return.
         if bwritten != len(data):
@@ -538,11 +542,8 @@ class File:
         self._bytes_written += bwritten
 
         # If we're in-memory and are over our limit, we create a file.
-        if (
-            self._in_memory
-            and self._config.get("MAX_MEMORY_FILE_SIZE") is not None
-            and (self._bytes_written > self._config.get("MAX_MEMORY_FILE_SIZE"))
-        ):
+        max_memory_file_size = self._config.get("MAX_MEMORY_FILE_SIZE")
+        if self._in_memory and max_memory_file_size is not None and (self._bytes_written > max_memory_file_size):
             self.logger.info("Flushing to disk")
             self.flush_to_disk()
 
@@ -592,41 +593,41 @@ class BaseParser:
     performance.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
+        self.callbacks: QuerystringCallbacks | OctetStreamCallbacks | MultipartCallbacks = {}
 
-    def callback(self, name: str, data=None, start=None, end=None):
+    def callback(
+        self, name: CallbackName, data: bytes | None = None, start: int | None = None, end: int | None = None
+    ) -> None:
         """This function calls a provided callback with some data.  If the
         callback is not set, will do nothing.
 
-        :param name: The name of the callback to call (as a string).
-
-        :param data: Data to pass to the callback.  If None, then it is
-                     assumed that the callback is a notification callback,
-                     and no parameters are given.
-
-        :param end: An integer that is passed to the data callback.
-
-        :param start: An integer that is passed to the data callback.
+        Args:
+            name: The name of the callback to call (as a string).
+            data: Data to pass to the callback.  If None, then it is assumed that the callback is a notification
+                callback, and no parameters are given.
+            end: An integer that is passed to the data callback.
+            start: An integer that is passed to the data callback.
         """
-        name = "on_" + name
-        func = self.callbacks.get(name)
+        on_name = "on_" + name
+        func = self.callbacks.get(on_name)
         if func is None:
             return
-
+        func = cast("Callable[..., Any]", func)
         # Depending on whether we're given a buffer...
         if data is not None:
             # Don't do anything if we have start == end.
             if start is not None and start == end:
                 return
 
-            self.logger.debug("Calling %s with data[%d:%d]", name, start, end)
+            self.logger.debug("Calling %s with data[%d:%d]", on_name, start, end)
             func(data, start, end)
         else:
-            self.logger.debug("Calling %s with no data", name)
+            self.logger.debug("Calling %s with no data", on_name)
             func()
 
-    def set_callback(self, name: str, new_func):
+    def set_callback(self, name: CallbackName, new_func: Callable[..., Any] | None) -> None:
         """Update the function for a callback.  Removes from the callbacks dict
         if new_func is None.
 
@@ -637,17 +638,17 @@ class BaseParser:
                          exist).
         """
         if new_func is None:
-            self.callbacks.pop("on_" + name, None)
+            self.callbacks.pop("on_" + name, None)  # type: ignore[misc]
         else:
-            self.callbacks["on_" + name] = new_func
+            self.callbacks["on_" + name] = new_func  # type: ignore[literal-required]
 
-    def close(self):
+    def close(self) -> None:
         pass  # pragma: no cover
 
-    def finalize(self):
+    def finalize(self) -> None:
         pass  # pragma: no cover
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s()" % self.__class__.__name__
 
 
@@ -655,45 +656,36 @@ class OctetStreamParser(BaseParser):
     """This parser parses an octet-stream request body and calls callbacks when
     incoming data is received.  Callbacks are as follows:
 
-    .. list-table::
-       :widths: 15 10 30
-       :header-rows: 1
+    | Callback Name  | Parameters      | Description                                         |
+    |----------------|-----------------|-----------------------------------------------------|
+    | on_start       | None            | Called when the first data is parsed.               |
+    | on_data        | data, start, end| Called for each data chunk that is parsed.           |
+    | on_end         | None            | Called when the parser is finished parsing all data.|
 
-       * - Callback Name
-         - Parameters
-         - Description
-       * - on_start
-         - None
-         - Called when the first data is parsed.
-       * - on_data
-         - data, start, end
-         - Called for each data chunk that is parsed.
-       * - on_end
-         - None
-         - Called when the parser is finished parsing all data.
-
-    :param callbacks: A dictionary of callbacks.  See the documentation for
-                      :class:`BaseParser`.
-
-    :param max_size: The maximum size of body to parse.  Defaults to infinity -
-                     i.e. unbounded.
+    Args:
+        callbacks: A dictionary of callbacks.  See the documentation for [`BaseParser`][multipart.BaseParser].
+        max_size: The maximum size of body to parse.  Defaults to infinity - i.e. unbounded.
     """
 
-    def __init__(self, callbacks: OctetStreamCallbacks = {}, max_size=float("inf")):
+    def __init__(self, callbacks: OctetStreamCallbacks = {}, max_size: float = float("inf")):
         super().__init__()
         self.callbacks = callbacks
         self._started = False
 
         if not isinstance(max_size, Number) or max_size < 1:
             raise ValueError("max_size must be a positive number, not %r" % max_size)
-        self.max_size = max_size
+        self.max_size: int | float = max_size
         self._current_size = 0
 
-    def write(self, data: bytes):
+    def write(self, data: bytes) -> int:
         """Write some data to the parser, which will perform size verification,
         and then pass the data to the underlying callback.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the parser.
+
+        Returns:
+            The number of bytes written.
         """
         if not self._started:
             self.callback("start")
@@ -732,51 +724,29 @@ class QuerystringParser(BaseParser):
     """This is a streaming querystring parser.  It will consume data, and call
     the callbacks given when it has data.
 
-    .. list-table::
-       :widths: 15 10 30
-       :header-rows: 1
+    | Callback Name  | Parameters      | Description                                         |
+    |----------------|-----------------|-----------------------------------------------------|
+    | on_field_start | None            | Called when a new field is encountered.             |
+    | on_field_name  | data, start, end| Called when a portion of a field's name is encountered. |
+    | on_field_data  | data, start, end| Called when a portion of a field's data is encountered. |
+    | on_field_end   | None            | Called when the end of a field is encountered.      |
+    | on_end         | None            | Called when the parser is finished parsing all data.|
 
-       * - Callback Name
-         - Parameters
-         - Description
-       * - on_field_start
-         - None
-         - Called when a new field is encountered.
-       * - on_field_name
-         - data, start, end
-         - Called when a portion of a field's name is encountered.
-       * - on_field_data
-         - data, start, end
-         - Called when a portion of a field's data is encountered.
-       * - on_field_end
-         - None
-         - Called when the end of a field is encountered.
-       * - on_end
-         - None
-         - Called when the parser is finished parsing all data.
-
-    :param callbacks: A dictionary of callbacks.  See the documentation for
-                      :class:`BaseParser`.
-
-    :param strict_parsing: Whether or not to parse the body strictly.  Defaults
-                           to False.  If this is set to True, then the behavior
-                           of the parser changes as the following: if a field
-                           has a value with an equal sign (e.g. "foo=bar", or
-                           "foo="), it is always included.  If a field has no
-                           equals sign (e.g. "...&name&..."), it will be
-                           treated as an error if 'strict_parsing' is True,
-                           otherwise included.  If an error is encountered,
-                           then a
-                           :class:`multipart.exceptions.QuerystringParseError`
-                           will be raised.
-
-    :param max_size: The maximum size of body to parse.  Defaults to infinity -
-                     i.e. unbounded.
-    """
+    Args:
+        callbacks: A dictionary of callbacks.  See the documentation for [`BaseParser`][multipart.BaseParser].
+        strict_parsing: Whether or not to parse the body strictly.  Defaults to False.  If this is set to True, then the
+            behavior of the parser changes as the following: if a field has a value with an equal sign
+            (e.g. "foo=bar", or "foo="), it is always included.  If a field has no equals sign (e.g. "...&name&..."),
+            it will be treated as an error if 'strict_parsing' is True, otherwise included.  If an error is encountered,
+            then a [`QuerystringParseError`][multipart.exceptions.QuerystringParseError] will be raised.
+        max_size: The maximum size of body to parse.  Defaults to infinity - i.e. unbounded.
+    """  # noqa: E501
 
     state: QuerystringState
 
-    def __init__(self, callbacks: QuerystringCallbacks = {}, strict_parsing: bool = False, max_size=float("inf")):
+    def __init__(
+        self, callbacks: QuerystringCallbacks = {}, strict_parsing: bool = False, max_size: float = float("inf")
+    ) -> None:
         super().__init__()
         self.state = QuerystringState.BEFORE_FIELD
         self._found_sep = False
@@ -786,7 +756,7 @@ class QuerystringParser(BaseParser):
         # Max-size stuff
         if not isinstance(max_size, Number) or max_size < 1:
             raise ValueError("max_size must be a positive number, not %r" % max_size)
-        self.max_size = max_size
+        self.max_size: int | float = max_size
         self._current_size = 0
 
         # Should parsing be strict?
@@ -800,7 +770,11 @@ class QuerystringParser(BaseParser):
         "offset" attribute of the raised exception will be set to the offset in
         the input data chunk (NOT the overall stream) that caused the error.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the parser.
+
+        Returns:
+            The number of bytes written.
         """
         # Handle sizing.
         data_len = len(data)
@@ -981,59 +955,27 @@ class QuerystringParser(BaseParser):
 class MultipartParser(BaseParser):
     """This class is a streaming multipart/form-data parser.
 
-    .. list-table::
-       :widths: 15 10 30
-       :header-rows: 1
+    | Callback Name      | Parameters      | Description |
+    |--------------------|-----------------|-------------|
+    | on_part_begin      | None            | Called when a new part of the multipart message is encountered. |
+    | on_part_data       | data, start, end| Called when a portion of a part's data is encountered. |
+    | on_part_end        | None            | Called when the end of a part is reached. |
+    | on_header_begin    | None            | Called when we've found a new header in a part of a multipart message |
+    | on_header_field    | data, start, end| Called each time an additional portion of a header is read (i.e. the part of the header that is before the colon; the "Foo" in "Foo: Bar"). |
+    | on_header_value    | data, start, end| Called when we get data for a header. |
+    | on_header_end      | None            | Called when the current header is finished - i.e. we've reached the newline at the end of the header. |
+    | on_headers_finished| None            | Called when all headers are finished, and before the part data starts. |
+    | on_end             | None            | Called when the parser is finished parsing all data. |
 
-       * - Callback Name
-         - Parameters
-         - Description
-       * - on_part_begin
-         - None
-         - Called when a new part of the multipart message is encountered.
-       * - on_part_data
-         - data, start, end
-         - Called when a portion of a part's data is encountered.
-       * - on_part_end
-         - None
-         - Called when the end of a part is reached.
-       * - on_header_begin
-         - None
-         - Called when we've found a new header in a part of a multipart
-           message
-       * - on_header_field
-         - data, start, end
-         - Called each time an additional portion of a header is read (i.e. the
-           part of the header that is before the colon; the "Foo" in
-           "Foo: Bar").
-       * - on_header_value
-         - data, start, end
-         - Called when we get data for a header.
-       * - on_header_end
-         - None
-         - Called when the current header is finished - i.e. we've reached the
-           newline at the end of the header.
-       * - on_headers_finished
-         - None
-         - Called when all headers are finished, and before the part data
-           starts.
-       * - on_end
-         - None
-         - Called when the parser is finished parsing all data.
+    Args:
+        boundary: The multipart boundary.  This is required, and must match what is given in the HTTP request - usually in the Content-Type header.
+        callbacks: A dictionary of callbacks.  See the documentation for [`BaseParser`][multipart.BaseParser].
+        max_size: The maximum size of body to parse.  Defaults to infinity - i.e. unbounded.
+    """  # noqa: E501
 
-
-    :param boundary: The multipart boundary.  This is required, and must match
-                     what is given in the HTTP request - usually in the
-                     Content-Type header.
-
-    :param callbacks: A dictionary of callbacks.  See the documentation for
-                      :class:`BaseParser`.
-
-    :param max_size: The maximum size of body to parse.  Defaults to infinity -
-                     i.e. unbounded.
-    """
-
-    def __init__(self, boundary: bytes | str, callbacks: MultipartCallbacks = {}, max_size=float("inf")):
+    def __init__(
+        self, boundary: bytes | str, callbacks: MultipartCallbacks = {}, max_size: float = float("inf")
+    ) -> None:
         # Initialize parser state.
         super().__init__()
         self.state = MultipartState.START
@@ -1047,30 +989,12 @@ class MultipartParser(BaseParser):
         self._current_size = 0
 
         # Setup marks.  These are used to track the state of data received.
-        self.marks = {}
-
-        # TODO: Actually use this rather than the dumb version we currently use
-        # # Precompute the skip table for the Boyer-Moore-Horspool algorithm.
-        # skip = [len(boundary) for x in range(256)]
-        # for i in range(len(boundary) - 1):
-        #     skip[ord_char(boundary[i])] = len(boundary) - i - 1
-        #
-        # # We use a tuple since it's a constant, and marginally faster.
-        # self.skip = tuple(skip)
+        self.marks: dict[str, int] = {}
 
         # Save our boundary.
         if isinstance(boundary, str):  # pragma: no cover
             boundary = boundary.encode("latin-1")
         self.boundary = b"\r\n--" + boundary
-
-        # Get a set of characters that belong to our boundary.
-        self.boundary_chars = frozenset(self.boundary)
-
-        # We also create a lookbehind list.
-        # Note: the +8 is since we can have, at maximum, "\r\n--" + boundary +
-        # "--\r\n" at the final boundary, and the length of '\r\n--' and
-        # '--\r\n' is 8 bytes.
-        self.lookbehind = [NULL for x in range(len(boundary) + 8)]
 
     def write(self, data: bytes) -> int:
         """Write some data to the parser, which will perform size verification,
@@ -1080,7 +1004,11 @@ class MultipartParser(BaseParser):
         attribute on the raised exception will be set to the offset of the byte
         in the input chunk that caused the error.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write to the parser.
+
+        Returns:
+            The number of bytes written.
         """
         # Handle sizing.
         data_len = len(data)
@@ -1118,11 +1046,11 @@ class MultipartParser(BaseParser):
         i = 0
 
         # Set a mark.
-        def set_mark(name):
+        def set_mark(name: str) -> None:
             self.marks[name] = i
 
         # Remove a mark.
-        def delete_mark(name, reset=False):
+        def delete_mark(name: str, reset: bool = False) -> None:
             self.marks.pop(name, None)
 
         # Helper function that makes calling a callback with data easier. The
@@ -1130,21 +1058,43 @@ class MultipartParser(BaseParser):
         # end of the buffer, and reset the mark, instead of deleting it.  This
         # is used at the end of the function to call our callbacks with any
         # remaining data in this chunk.
-        def data_callback(name, remaining=False):
+        def data_callback(name: CallbackName, end_i: int, remaining: bool = False) -> None:
             marked_index = self.marks.get(name)
             if marked_index is None:
                 return
 
-            # If we're getting remaining data, we ignore the current i value
-            # and just call with the remaining data.
-            if remaining:
-                self.callback(name, data, marked_index, length)
-                self.marks[name] = 0
-
             # Otherwise, we call it from the mark to the current byte we're
             # processing.
+            if end_i <= marked_index:
+                # There is no additional data to send.
+                pass
+            elif marked_index >= 0:
+                # We are emitting data from the local buffer.
+                self.callback(name, data, marked_index, end_i)
             else:
-                self.callback(name, data, marked_index, i)
+                # Some of the data comes from a partial boundary match.
+                # and requires look-behind.
+                # We need to use self.flags (and not flags) because we care about
+                # the state when we entered the loop.
+                lookbehind_len = -marked_index
+                if lookbehind_len <= len(boundary):
+                    self.callback(name, boundary, 0, lookbehind_len)
+                elif self.flags & FLAG_PART_BOUNDARY:
+                    lookback = boundary + b"\r\n"
+                    self.callback(name, lookback, 0, lookbehind_len)
+                elif self.flags & FLAG_LAST_BOUNDARY:
+                    lookback = boundary + b"--\r\n"
+                    self.callback(name, lookback, 0, lookbehind_len)
+                else:  # pragma: no cover (error case)
+                    self.logger.warning("Look-back buffer error")
+
+                if end_i > 0:
+                    self.callback(name, data, 0, end_i)
+            # If we're getting remaining data, we have got all the data we
+            # can be certain is not a boundary, leaving only a partial boundary match.
+            if remaining:
+                self.marks[name] = end_i - length
+            else:
                 self.marks.pop(name, None)
 
         # For each byte...
@@ -1200,7 +1150,7 @@ class MultipartParser(BaseParser):
                 else:
                     # Check to ensure our boundary matches
                     if c != boundary[index + 2]:
-                        msg = "Did not find boundary character %r at index " "%d" % (c, index + 2)
+                        msg = "Expected boundary character %r, got %r at index %d" % (boundary[index + 2], c, index + 2)
                         self.logger.warning(msg)
                         e = MultipartParseError(msg)
                         e.offset = i
@@ -1217,6 +1167,13 @@ class MultipartParser(BaseParser):
                 # Set a mark of our header field.
                 set_mark("header_field")
 
+                # Notify that we're starting a header if the next character is
+                # not a CR; a CR at the beginning of the header will cause us
+                # to stop parsing headers in the MultipartState.HEADER_FIELD state,
+                # below.
+                if c != CR:
+                    self.callback("header_begin")
+
                 # Move to parsing header fields.
                 state = MultipartState.HEADER_FIELD
                 i -= 1
@@ -1225,7 +1182,7 @@ class MultipartParser(BaseParser):
                 # If we've reached a CR at the beginning of a header, it means
                 # that we've reached the second of 2 newlines, and so there are
                 # no more headers to parse.
-                if c == CR:
+                if c == CR and index == 0:
                     delete_mark("header_field")
                     state = MultipartState.HEADERS_ALMOST_DONE
                     i += 1
@@ -1234,12 +1191,8 @@ class MultipartParser(BaseParser):
                 # Increment our index in the header.
                 index += 1
 
-                # Do nothing if we encounter a hyphen.
-                if c == HYPHEN:
-                    pass
-
                 # If we've reached a colon, we're done with this header.
-                elif c == COLON:
+                if c == COLON:
                     # A 0-length header is an error.
                     if index == 1:
                         msg = "Found 0-length header at %d" % (i,)
@@ -1249,21 +1202,17 @@ class MultipartParser(BaseParser):
                         raise e
 
                     # Call our callback with the header field.
-                    data_callback("header_field")
+                    data_callback("header_field", i)
 
                     # Move to parsing the header value.
                     state = MultipartState.HEADER_VALUE_START
 
-                else:
-                    # Lower-case this character, and ensure that it is in fact
-                    # a valid letter.  If not, it's an error.
-                    cl = lower_char(c)
-                    if cl < LOWER_A or cl > LOWER_Z:
-                        msg = "Found non-alphanumeric character %r in " "header at %d" % (c, i)
-                        self.logger.warning(msg)
-                        e = MultipartParseError(msg)
-                        e.offset = i
-                        raise e
+                elif c not in TOKEN_CHARS_SET:
+                    msg = "Found invalid character %r in header at %d" % (c, i)
+                    self.logger.warning(msg)
+                    e = MultipartParseError(msg)
+                    e.offset = i
+                    raise e
 
             elif state == MultipartState.HEADER_VALUE_START:
                 # Skip leading spaces.
@@ -1282,7 +1231,7 @@ class MultipartParser(BaseParser):
                 # If we've got a CR, we're nearly done our headers.  Otherwise,
                 # we do nothing and just move past this character.
                 if c == CR:
-                    data_callback("header_value")
+                    data_callback("header_value", i)
                     self.callback("header_end")
                     state = MultipartState.HEADER_VALUE_ALMOST_DONE
 
@@ -1326,9 +1275,6 @@ class MultipartParser(BaseParser):
                 # We're processing our part data right now.  During this, we
                 # need to efficiently search for our boundary, since any data
                 # on any number of lines can be a part of the current data.
-                # We use the Boyer-Moore-Horspool algorithm to efficiently
-                # search through the remainder of the buffer looking for our
-                # boundary.
 
                 # Save the current value of our index.  We use this in case we
                 # find part of a boundary, but it doesn't match fully.
@@ -1336,24 +1282,32 @@ class MultipartParser(BaseParser):
 
                 # Set up variables.
                 boundary_length = len(boundary)
-                boundary_end = boundary_length - 1
                 data_length = length
-                boundary_chars = self.boundary_chars
 
                 # If our index is 0, we're starting a new part, so start our
                 # search.
                 if index == 0:
-                    # Search forward until we either hit the end of our buffer,
-                    # or reach a character that's in our boundary.
-                    i += boundary_end
-                    while i < data_length - 1 and data[i] not in boundary_chars:
-                        i += boundary_length
+                    # The most common case is likely to be that the whole
+                    # boundary is present in the buffer.
+                    # Calling `find` is much faster than iterating here.
+                    i0 = data.find(boundary, i, data_length)
+                    if i0 >= 0:
+                        # We matched the whole boundary string.
+                        index = boundary_length - 1
+                        i = i0 + boundary_length - 1
+                    else:
+                        # No match found for whole string.
+                        # There may be a partial boundary at the end of the
+                        # data, which the find will not match.
+                        # Since the length should to be searched is limited to
+                        # the boundary length, just perform a naive search.
+                        i = max(i, data_length - boundary_length)
 
-                    # Reset i back the length of our boundary, which is the
-                    # earliest possible location that could be our match (i.e.
-                    # if we've just broken out of our loop since we saw the
-                    # last character in our boundary)
-                    i -= boundary_end
+                        # Search forward until we either hit the end of our buffer,
+                        # or reach a potential start of the boundary.
+                        while i < data_length - 1 and data[i] != boundary[0]:
+                            i += 1
+
                     c = data[i]
 
                 # Now, we have a couple of cases here.  If our index is before
@@ -1361,11 +1315,6 @@ class MultipartParser(BaseParser):
                 if index < boundary_length:
                     # If the character matches...
                     if boundary[index] == c:
-                        # If we found a match for our boundary, we send the
-                        # existing data.
-                        if index == 0:
-                            data_callback("part_data")
-
                         # The current character matches, so continue!
                         index += 1
                     else:
@@ -1402,6 +1351,8 @@ class MultipartParser(BaseParser):
                             # Unset the part boundary flag.
                             flags &= ~FLAG_PART_BOUNDARY
 
+                            # We have identified a boundary, callback for any data before it.
+                            data_callback("part_data", i - index)
                             # Callback indicating that we've reached the end of
                             # a part, and are starting a new one.
                             self.callback("part_end")
@@ -1423,6 +1374,8 @@ class MultipartParser(BaseParser):
                     elif flags & FLAG_LAST_BOUNDARY:
                         # We need a second hyphen here.
                         if c == HYPHEN:
+                            # We have identified a boundary, callback for any data before it.
+                            data_callback("part_data", i - index)
                             # Callback to end the current part, and then the
                             # message.
                             self.callback("part_end")
@@ -1432,25 +1385,13 @@ class MultipartParser(BaseParser):
                             # No match, so reset index.
                             index = 0
 
-                # If we have an index, we need to keep this byte for later, in
-                # case we can't match the full boundary.
-                if index > 0:
-                    self.lookbehind[index - 1] = c
-
                 # Otherwise, our index is 0.  If the previous index is not, it
                 # means we reset something, and we need to take the data we
                 # thought was part of our boundary and send it along as actual
                 # data.
-                elif prev_index > 0:
-                    # Callback to write the saved data.
-                    lb_data = join_bytes(self.lookbehind)
-                    self.callback("part_data", lb_data, 0, prev_index)
-
+                if index == 0 and prev_index > 0:
                     # Overwrite our previous index.
                     prev_index = 0
-
-                    # Re-set our mark for part data.
-                    set_mark("part_data")
 
                     # Re-consider the current character, since this could be
                     # the start of the boundary itself.
@@ -1459,7 +1400,7 @@ class MultipartParser(BaseParser):
             elif state == MultipartState.END:
                 # Do nothing and just consume a byte in the end state.
                 if c not in (CR, LF):
-                    self.logger.warning("Consuming a byte '0x%x' in the end state", c)
+                    self.logger.warning("Consuming a byte '0x%x' in the end state", c)  # pragma: no cover
 
             else:  # pragma: no cover (error case)
                 # We got into a strange state somehow!  Just stop processing.
@@ -1480,9 +1421,9 @@ class MultipartParser(BaseParser):
         # that we haven't yet reached the end of this 'thing'.  So, by setting
         # the mark to 0, we cause any data callbacks that take place in future
         # calls to this function to start from the beginning of that buffer.
-        data_callback("header_field", True)
-        data_callback("header_value", True)
-        data_callback("part_data", True)
+        data_callback("header_field", length, True)
+        data_callback("header_value", length, True)
+        data_callback("part_data", length - index, True)
 
         # Save values to locals.
         self.state = state
@@ -1504,7 +1445,7 @@ class MultipartParser(BaseParser):
         # error or otherwise state that we're not finished parsing.
         pass
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(boundary={self.boundary!r})"
 
 
@@ -1515,50 +1456,31 @@ class FormParser:
     is parsed, and call the two given callbacks with each field and file as
     they become available.
 
-    :param content_type: The Content-Type of the incoming request.  This is
-                         used to select the appropriate parser.
-
-    :param on_field: The callback to call when a field has been parsed and is
-                     ready for usage.  See above for parameters.
-
-    :param on_file: The callback to call when a file has been parsed and is
-                    ready for usage.  See above for parameters.
-
-    :param on_end: An optional callback to call when all fields and files in a
-                   request has been parsed.  Can be None.
-
-    :param boundary: If the request is a multipart/form-data request, this
-                     should be the boundary of the request, as given in the
-                     Content-Type header, as a bytestring.
-
-    :param file_name: If the request is of type application/octet-stream, then
-                      the body of the request will not contain any information
-                      about the uploaded file.  In such cases, you can provide
-                      the file name of the uploaded file manually.
-
-    :param FileClass: The class to use for uploaded files.  Defaults to
-                      :class:`File`, but you can provide your own class if you
-                      wish to customize behaviour.  The class will be
-                      instantiated as FileClass(file_name, field_name), and it
-                      must provide the following functions::
-                          file_instance.write(data)
-                          file_instance.finalize()
-                          file_instance.close()
-
-    :param FieldClass: The class to use for uploaded fields.  Defaults to
-                       :class:`Field`, but you can provide your own class if
-                       you wish to customize behaviour.  The class will be
-                       instantiated as FieldClass(field_name), and it must
-                       provide the following functions::
-                           field_instance.write(data)
-                           field_instance.finalize()
-                           field_instance.close()
-
-    :param config: Configuration to use for this FormParser.  The default
-                   values are taken from the DEFAULT_CONFIG value, and then
-                   any keys present in this dictionary will overwrite the
-                   default values.
-
+    Args:
+        content_type: The Content-Type of the incoming request.  This is used to select the appropriate parser.
+        on_field: The callback to call when a field has been parsed and is ready for usage.  See above for parameters.
+        on_file: The callback to call when a file has been parsed and is ready for usage.  See above for parameters.
+        on_end: An optional callback to call when all fields and files in a request has been parsed.  Can be None.
+        boundary: If the request is a multipart/form-data request, this should be the boundary of the request, as given
+            in the Content-Type header, as a bytestring.
+        file_name: If the request is of type application/octet-stream, then the body of the request will not contain any
+            information about the uploaded file.  In such cases, you can provide the file name of the uploaded file
+            manually.
+        FileClass: The class to use for uploaded files.  Defaults to :class:`File`, but you can provide your own class
+            if you wish to customize behaviour.  The class will be instantiated as FileClass(file_name, field_name), and
+            it must provide the following functions::
+                - file_instance.write(data)
+                - file_instance.finalize()
+                - file_instance.close()
+        FieldClass: The class to use for uploaded fields.  Defaults to :class:`Field`, but you can provide your own
+            class if you wish to customize behaviour.  The class will be instantiated as FieldClass(field_name), and it
+            must provide the following functions::
+                - field_instance.write(data)
+                - field_instance.finalize()
+                - field_instance.close()
+                - field_instance.set_none()
+        config: Configuration to use for this FormParser.  The default values are taken from the DEFAULT_CONFIG value,
+            and then any keys present in this dictionary will overwrite the default values.
     """
 
     #: This is the default configuration for our form parser.
@@ -1575,16 +1497,16 @@ class FormParser:
 
     def __init__(
         self,
-        content_type,
-        on_field,
-        on_file,
-        on_end=None,
-        boundary=None,
-        file_name=None,
-        FileClass=File,
-        FieldClass=Field,
-        config: FormParserConfig = {},
-    ):
+        content_type: str,
+        on_field: OnFieldCallback | None,
+        on_file: OnFileCallback | None,
+        on_end: Callable[[], None] | None = None,
+        boundary: bytes | str | None = None,
+        file_name: bytes | None = None,
+        FileClass: type[FileProtocol] = File,
+        FieldClass: type[FieldProtocol] = Field,
+        config: dict[Any, Any] = {},
+    ) -> None:
         self.logger = logging.getLogger(__name__)
 
         # Save variables.
@@ -1603,27 +1525,31 @@ class FormParser:
         self.FieldClass = Field
 
         # Set configuration options.
-        self.config = self.DEFAULT_CONFIG.copy()
-        self.config.update(config)
+        self.config: FormParserConfig = self.DEFAULT_CONFIG.copy()
+        self.config.update(config)  # type: ignore[typeddict-item]
+
+        parser: OctetStreamParser | MultipartParser | QuerystringParser | None = None
 
         # Depending on the Content-Type, we instantiate the correct parser.
         if content_type == "application/octet-stream":
-            # Work around the lack of 'nonlocal' in Py2
-            class vars:
-                f = None
+            file: FileProtocol = None  # type: ignore
 
             def on_start() -> None:
-                vars.f = FileClass(file_name, None, config=self.config)
+                nonlocal file
+                file = FileClass(file_name, None, config=cast("FileConfig", self.config))
 
             def on_data(data: bytes, start: int, end: int) -> None:
-                vars.f.write(data[start:end])
+                nonlocal file
+                file.write(data[start:end])
 
-            def on_end() -> None:
+            def _on_end() -> None:
+                nonlocal file
                 # Finalize the file itself.
-                vars.f.finalize()
+                file.finalize()
 
                 # Call our callback.
-                on_file(vars.f)
+                if on_file:
+                    on_file(file)
 
                 # Call the on-end callback.
                 if self.on_end is not None:
@@ -1631,15 +1557,14 @@ class FormParser:
 
             # Instantiate an octet-stream parser
             parser = OctetStreamParser(
-                callbacks={"on_start": on_start, "on_data": on_data, "on_end": on_end},
+                callbacks={"on_start": on_start, "on_data": on_data, "on_end": _on_end},
                 max_size=self.config["MAX_BODY_SIZE"],
             )
 
         elif content_type == "application/x-www-form-urlencoded" or content_type == "application/x-url-encoded":
             name_buffer: list[bytes] = []
 
-            class vars:
-                f = None
+            f: FieldProtocol | None = None
 
             def on_field_start() -> None:
                 pass
@@ -1648,25 +1573,28 @@ class FormParser:
                 name_buffer.append(data[start:end])
 
             def on_field_data(data: bytes, start: int, end: int) -> None:
-                if vars.f is None:
-                    vars.f = FieldClass(b"".join(name_buffer))
+                nonlocal f
+                if f is None:
+                    f = FieldClass(b"".join(name_buffer))
                     del name_buffer[:]
-                vars.f.write(data[start:end])
+                f.write(data[start:end])
 
             def on_field_end() -> None:
+                nonlocal f
                 # Finalize and call callback.
-                if vars.f is None:
+                if f is None:
                     # If we get here, it's because there was no field data.
                     # We create a field, set it to None, and then continue.
-                    vars.f = FieldClass(b"".join(name_buffer))
+                    f = FieldClass(b"".join(name_buffer))
                     del name_buffer[:]
-                    vars.f.set_none()
+                    f.set_none()
 
-                vars.f.finalize()
-                on_field(vars.f)
-                vars.f = None
+                f.finalize()
+                if on_field:
+                    on_field(f)
+                f = None
 
-            def on_end() -> None:
+            def _on_end() -> None:
                 if self.on_end is not None:
                     self.on_end()
 
@@ -1677,7 +1605,7 @@ class FormParser:
                     "on_field_name": on_field_name,
                     "on_field_data": on_field_data,
                     "on_field_end": on_field_end,
-                    "on_end": on_end,
+                    "on_end": _on_end,
                 },
                 max_size=self.config["MAX_BODY_SIZE"],
             )
@@ -1689,43 +1617,49 @@ class FormParser:
 
             header_name: list[bytes] = []
             header_value: list[bytes] = []
-            headers = {}
+            headers: dict[bytes, bytes] = {}
 
-            # No 'nonlocal' on Python 2 :-(
-            class vars:
-                f = None
-                writer = None
-                is_file = False
+            f_multi: FileProtocol | FieldProtocol | None = None
+            writer = None
+            is_file = False
 
-            def on_part_begin():
-                pass
+            def on_part_begin() -> None:
+                # Reset headers in case this isn't the first part.
+                nonlocal headers
+                headers = {}
 
-            def on_part_data(data: bytes, start: int, end: int):
-                bytes_processed = vars.writer.write(data[start:end])
+            def on_part_data(data: bytes, start: int, end: int) -> None:
+                nonlocal writer
+                assert writer is not None
+                writer.write(data[start:end])
                 # TODO: check for error here.
-                return bytes_processed
 
             def on_part_end() -> None:
-                vars.f.finalize()
-                if vars.is_file:
-                    on_file(vars.f)
+                nonlocal f_multi, is_file
+                assert f_multi is not None
+                f_multi.finalize()
+                if is_file:
+                    if on_file:
+                        on_file(f_multi)
                 else:
-                    on_field(vars.f)
+                    if on_field:
+                        on_field(cast("FieldProtocol", f_multi))
 
-            def on_header_field(data: bytes, start: int, end: int):
+            def on_header_field(data: bytes, start: int, end: int) -> None:
                 header_name.append(data[start:end])
 
-            def on_header_value(data: bytes, start: int, end: int):
+            def on_header_value(data: bytes, start: int, end: int) -> None:
                 header_value.append(data[start:end])
 
-            def on_header_end():
+            def on_header_end() -> None:
                 headers[b"".join(header_name)] = b"".join(header_value)
                 del header_name[:]
                 del header_value[:]
 
             def on_headers_finished() -> None:
+                nonlocal is_file, f_multi, writer
                 # Reset the 'is file' flag.
-                vars.is_file = False
+                is_file = False
 
                 # Parse the content-disposition header.
                 # TODO: handle mixed case
@@ -1739,36 +1673,38 @@ class FormParser:
 
                 # Create the proper class.
                 if file_name is None:
-                    vars.f = FieldClass(field_name)
+                    f_multi = FieldClass(field_name)
                 else:
-                    vars.f = FileClass(file_name, field_name, config=self.config)
-                    vars.is_file = True
+                    f_multi = FileClass(file_name, field_name, config=cast("FileConfig", self.config))
+                    is_file = True
 
                 # Parse the given Content-Transfer-Encoding to determine what
                 # we need to do with the incoming data.
                 # TODO: check that we properly handle 8bit / 7bit encoding.
                 transfer_encoding = headers.get(b"Content-Transfer-Encoding", b"7bit")
 
-                if transfer_encoding == b"binary" or transfer_encoding == b"8bit" or transfer_encoding == b"7bit":
-                    vars.writer = vars.f
+                if transfer_encoding in (b"binary", b"8bit", b"7bit"):
+                    writer = f_multi
 
                 elif transfer_encoding == b"base64":
-                    vars.writer = Base64Decoder(vars.f)
+                    writer = Base64Decoder(f_multi)
 
                 elif transfer_encoding == b"quoted-printable":
-                    vars.writer = QuotedPrintableDecoder(vars.f)
+                    writer = QuotedPrintableDecoder(f_multi)
 
                 else:
                     self.logger.warning("Unknown Content-Transfer-Encoding: %r", transfer_encoding)
                     if self.config["UPLOAD_ERROR_ON_BAD_CTE"]:
-                        raise FormParserError('Unknown Content-Transfer-Encoding "{}"'.format(transfer_encoding))
+                        raise FormParserError('Unknown Content-Transfer-Encoding "{!r}"'.format(transfer_encoding))
                     else:
                         # If we aren't erroring, then we just treat this as an
                         # unencoded Content-Transfer-Encoding.
-                        vars.writer = vars.f
+                        writer = f_multi
 
-            def on_end() -> None:
-                vars.writer.finalize()
+            def _on_end() -> None:
+                nonlocal writer
+                assert writer is not None
+                writer.finalize()
                 if self.on_end is not None:
                     self.on_end()
 
@@ -1783,7 +1719,7 @@ class FormParser:
                     "on_header_value": on_header_value,
                     "on_header_end": on_header_end,
                     "on_headers_finished": on_headers_finished,
-                    "on_end": on_end,
+                    "on_end": _on_end,
                 },
                 max_size=self.config["MAX_BODY_SIZE"],
             )
@@ -1794,14 +1730,19 @@ class FormParser:
 
         self.parser = parser
 
-    def write(self, data: bytes):
+    def write(self, data: bytes) -> int:
         """Write some data.  The parser will forward this to the appropriate
         underlying parser.
 
-        :param data: a bytestring
+        Args:
+            data: The data to write.
+
+        Returns:
+            The number of bytes processed.
         """
         self.bytes_received += len(data)
         # TODO: check the parser's return value for errors?
+        assert self.parser is not None
         return self.parser.write(data)
 
     def finalize(self) -> None:
@@ -1818,27 +1759,28 @@ class FormParser:
         return "{}(content_type={!r}, parser={!r})".format(self.__class__.__name__, self.content_type, self.parser)
 
 
-def create_form_parser(headers, on_field, on_file, trust_x_headers=False, config={}):
+def create_form_parser(
+    headers: dict[str, bytes],
+    on_field: OnFieldCallback | None,
+    on_file: OnFileCallback | None,
+    trust_x_headers: bool = False,
+    config: dict[Any, Any] = {},
+) -> FormParser:
     """This function is a helper function to aid in creating a FormParser
     instances.  Given a dictionary-like headers object, it will determine
     the correct information needed, instantiate a FormParser with the
     appropriate values and given callbacks, and then return the corresponding
     parser.
 
-    :param headers: A dictionary-like object of HTTP headers.  The only
-                    required header is Content-Type.
-
-    :param on_field: Callback to call with each parsed field.
-
-    :param on_file: Callback to call with each parsed file.
-
-    :param trust_x_headers: Whether or not to trust information received from
-                            certain X-Headers - for example, the file name from
-                            X-File-Name.
-
-    :param config: Configuration variables to pass to the FormParser.
+    Args:
+        headers: A dictionary-like object of HTTP headers.  The only required header is Content-Type.
+        on_field: Callback to call with each parsed field.
+        on_file: Callback to call with each parsed file.
+        trust_x_headers: Whether or not to trust information received from certain X-Headers - for example, the file
+            name from X-File-Name.
+        config: Configuration variables to pass to the FormParser.
     """
-    content_type = headers.get("Content-Type")
+    content_type: str | bytes | None = headers.get("Content-Type")
     if content_type is None:
         logging.getLogger(__name__).warning("No Content-Type header given")
         raise ValueError("No Content-Type header given!")
@@ -1861,32 +1803,32 @@ def create_form_parser(headers, on_field, on_file, trust_x_headers=False, config
     return form_parser
 
 
-def parse_form(headers, input_stream, on_field, on_file, chunk_size=1048576, **kwargs):
+def parse_form(
+    headers: dict[str, bytes],
+    input_stream: SupportsRead,
+    on_field: OnFieldCallback | None,
+    on_file: OnFileCallback | None,
+    chunk_size: int = 1048576,
+) -> None:
     """This function is useful if you just want to parse a request body,
     without too much work.  Pass it a dictionary-like object of the request's
     headers, and a file-like object for the input stream, along with two
     callbacks that will get called whenever a field or file is parsed.
 
-    :param headers: A dictionary-like object of HTTP headers.  The only
-                    required header is Content-Type.
-
-    :param input_stream: A file-like object that represents the request body.
-                         The read() method must return bytestrings.
-
-    :param on_field: Callback to call with each parsed field.
-
-    :param on_file: Callback to call with each parsed file.
-
-    :param chunk_size: The maximum size to read from the input stream and write
-                       to the parser at one time.  Defaults to 1 MiB.
+    Args:
+        headers: A dictionary-like object of HTTP headers.  The only required header is Content-Type.
+        input_stream: A file-like object that represents the request body. The read() method must return bytestrings.
+        on_field: Callback to call with each parsed field.
+        on_file: Callback to call with each parsed file.
+        chunk_size: The maximum size to read from the input stream and write to the parser at one time.
+            Defaults to 1 MiB.
     """
-
     # Create our form parser.
     parser = create_form_parser(headers, on_field, on_file)
 
-    # Read chunks of 100KiB and write to the parser, but never read more than
+    # Read chunks of 1MiB and write to the parser, but never read more than
     # the given Content-Length, if any.
-    content_length = headers.get("Content-Length")
+    content_length: int | float | bytes | None = headers.get("Content-Length")
     if content_length is not None:
         content_length = int(content_length)
     else:
@@ -1895,7 +1837,7 @@ def parse_form(headers, input_stream, on_field, on_file, chunk_size=1048576, **k
 
     while True:
         # Read only up to the Content-Length given.
-        max_readable = min(content_length - bytes_read, 1048576)
+        max_readable = int(min(content_length - bytes_read, chunk_size))
         buff = input_stream.read(max_readable)
 
         # Write to the parser and update our length.

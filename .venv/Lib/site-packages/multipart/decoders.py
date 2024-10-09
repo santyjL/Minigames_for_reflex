@@ -1,7 +1,21 @@
 import base64
 import binascii
+from typing import TYPE_CHECKING
 
 from .exceptions import DecodeError
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Protocol, TypeVar
+
+    _T_contra = TypeVar("_T_contra", contravariant=True)
+
+    class SupportsWrite(Protocol[_T_contra]):
+        def write(self, __b: _T_contra) -> object: ...
+
+        # No way to specify optional methods. See
+        # https://github.com/python/typing/issues/601
+        # close() [Optional]
+        # finalize() [Optional]
 
 
 class Base64Decoder:
@@ -33,11 +47,11 @@ class Base64Decoder:
     :param underlying: the underlying object to pass writes to
     """
 
-    def __init__(self, underlying):
+    def __init__(self, underlying: "SupportsWrite[bytes]") -> None:
         self.cache = bytearray()
         self.underlying = underlying
 
-    def write(self, data):
+    def write(self, data: bytes) -> int:
         """Takes any input data provided, decodes it as base64, and passes it
         on to the underlying object.  If the data provided is invalid base64
         data, then this method will raise
@@ -66,21 +80,21 @@ class Base64Decoder:
         # Get the remaining bytes and save in our cache.
         remaining_len = len(data) % 4
         if remaining_len > 0:
-            self.cache = data[-remaining_len:]
+            self.cache[:] = data[-remaining_len:]
         else:
-            self.cache = b""
+            self.cache[:] = b""
 
         # Return the length of the data to indicate no error.
         return len(data)
 
-    def close(self):
+    def close(self) -> None:
         """Close this decoder.  If the underlying object has a `close()`
         method, this function will call it.
         """
         if hasattr(self.underlying, "close"):
             self.underlying.close()
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Finalize this object.  This should be called when no more data
         should be written to the stream.  This function can raise a
         :class:`multipart.exceptions.DecodeError` if there is some remaining
@@ -97,7 +111,7 @@ class Base64Decoder:
         if hasattr(self.underlying, "finalize"):
             self.underlying.finalize()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(underlying={self.underlying!r})"
 
 
@@ -111,11 +125,11 @@ class QuotedPrintableDecoder:
     :param underlying: the underlying object to pass writes to
     """
 
-    def __init__(self, underlying):
+    def __init__(self, underlying: "SupportsWrite[bytes]") -> None:
         self.cache = b""
         self.underlying = underlying
 
-    def write(self, data):
+    def write(self, data: bytes) -> int:
         """Takes any input data provided, decodes it as quoted-printable, and
         passes it on to the underlying object.
 
@@ -142,14 +156,14 @@ class QuotedPrintableDecoder:
         self.cache = rest
         return len(data)
 
-    def close(self):
+    def close(self) -> None:
         """Close this decoder.  If the underlying object has a `close()`
         method, this function will call it.
         """
         if hasattr(self.underlying, "close"):
             self.underlying.close()
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Finalize this object.  This should be called when no more data
         should be written to the stream.  This function will not raise any
         exceptions, but it may write more data to the underlying object if
@@ -159,7 +173,7 @@ class QuotedPrintableDecoder:
         call it.
         """
         # If we have a cache, write and then remove it.
-        if len(self.cache) > 0:
+        if len(self.cache) > 0:  # pragma: no cover
             self.underlying.write(binascii.a2b_qp(self.cache))
             self.cache = b""
 
@@ -167,5 +181,5 @@ class QuotedPrintableDecoder:
         if hasattr(self.underlying, "finalize"):
             self.underlying.finalize()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(underlying={self.underlying!r})"
