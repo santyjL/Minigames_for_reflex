@@ -126,14 +126,16 @@ class EstadoTresEnRaya(classBase):
             return mejor_puntaje
 
     def movimiento_ia(self):
-        if self.ronda == 1:
-            # Realiza una jugada aleatoria para el primer movimiento
+        """La IA realiza un movimiento: el primer movimiento de cada ronda es aleatorio, el resto usa Minimax."""
+        # Verificar si es el primer movimiento de la IA en la ronda actual
+        if self.tablero.count("") == 9 or (self.jugador_actual == "⭕" and self.tablero.count("❌") == 1):
+            # Primer movimiento aleatorio en cada ronda
             posiciones_libres = [i for i, v in enumerate(self.tablero) if v == ""]
             if posiciones_libres:
                 posicion = random.choice(posiciones_libres)
                 self.realizar_movimiento(posicion)
         else:
-            # Usa Minimax para el resto de las jugadas
+            # Movimientos posteriores: usa el algoritmo Minimax
             mejor_puntaje = -float('inf')
             mejor_movimiento = None
             for i in range(9):
@@ -146,6 +148,7 @@ class EstadoTresEnRaya(classBase):
                         mejor_movimiento = i
             if mejor_movimiento is not None:
                 self.realizar_movimiento(mejor_movimiento)
+
 
     # endregion
 
