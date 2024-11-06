@@ -168,7 +168,7 @@ class EstadoTresEnRaya(classBase):
 # endregion
 
 # region: Componentes UI
-def tablero() -> rx.Component:
+def tablero(ancho, alto, ancho_boton) -> rx.Component:
     return rx.box(
         rx.grid(
             *[
@@ -178,56 +178,129 @@ def tablero() -> rx.Component:
                         EstadoTresEnRaya.tablero[i],
                         " "
                     ),
-                    width="auto", height="auto",
+                    width=ancho_boton,  # Ajustes para móvil (30vw) y escritorio (10vw)
+                    height=alto,  # Ajustes para móvil (30vw) y escritorio (10vw)
                     bg="#0000", border="solid #FFFFFF",
                     on_click=lambda i=i: EstadoTresEnRaya.realizar_movimiento(i),
                 ) for i in range(9)
             ],
+            rx.mobile_and_tablet(width="90%", height="90%", margin=Tamaños.MARGIN_PEQUEÑO.value),
             columns="3", rows="3",
             margin=Tamaños.MARGIN_GRANDE.value,
             padding=Tamaños.PADDING.value,
             bg=Colores.BG_COMPONENTES.value,
-            width="40vw", height="70vh"
-        )
+            width=ancho,  # Tamaño para móvil y escritorio
+            height=["85vw", "70vh"], # Tamaño para móvil y escritorio,
+            border_radius=Tamaños.BORDER_RADIUS.value,
+            border=Tamaños.BORDER.value
+        ),
+        display="flex",
+        justify_content="center",
+        align_items="center"
     )
 
-def ronda() -> rx.Component:
+def ronda(ancho) -> rx.Component:
     return rx.center(
         rx.box(
-            rx.text("Ronda", font_size=TamañosTexto.SUBTITULO.value, color=Colores.TEXTO.value, align="center"),
+            rx.text(
+                "Ronda",
+                font_size=["20px", TamañosTexto.SUBTITULO.value],
+                color=Colores.TEXTO.value,
+                align="center"
+            ),
             rx.box(
-                rx.text(EstadoTresEnRaya.var_ronda_actual, font_size=TamañosTexto.TITULO.value, color=Colores.TITULO.value, align="center"),
-                bg=Colores.SECUNDARIO.value, width="20vw", padding=Tamaños.PADDING.value, margin=Tamaños.MARGIN_MEDIANO.value
-            ), margin_y=175
-        )
+                rx.text(
+                    EstadoTresEnRaya.var_ronda_actual,
+                    font_size=["30px","20px", TamañosTexto.TITULO.value],
+                    color=Colores.TITULO.value,
+                    align="center"
+                ),
+                bg=Colores.SECUNDARIO.value,
+                width=ancho,  # Ajuste del tamaño para móvil (90vw) y escritorio (20vw)
+                height="auto",
+                padding=Tamaños.PADDING.value,
+                margin=Tamaños.MARGIN_MEDIANO.value,
+                display="flex",
+                justify_content="center",
+                align_text="center",
+                border_radius=Tamaños.BORDER_RADIUS.value,
+                border=Tamaños.BORDER.value
+            ),
+            # Márgenes específicos para cada tipo de dispositivo
+            rx.desktop_only(margin_y=175),
+            rx.mobile_and_tablet(margin_y=3)
+        ),
+        width="100%",  # Aseguramos que el centro ocupe todo el ancho
+        height="100%", # Aseguramos que el centro ocupe toda la altura
+        display="flex",
+        direction="column",
+        justify="center",
+        align_items="center",
     )
 
 def puntuacion(nombre: str, valor: rx.Var[int]) -> rx.Component:
     return rx.box(
-        rx.text(nombre, font_size=TamañosTexto.TEXTO.value, color=Colores.TITULO.value, align="center"),
+        rx.text(nombre, font_size=["20px", TamañosTexto.TEXTO.value], color=Colores.TITULO.value, align="center"),
         rx.box(
-            rx.text(valor, font_size=["80px", "100px", "120px"], color=Colores.TITULO.value, align="center", _hover=_hover_generico),
+            rx.text(valor, font_size=["40px", "60px", "80px", "100px", "120px"], color=Colores.TITULO.value, align="center", _hover=_hover_generico),
             rx.desktop_only(width="12vw"),
-            rx.mobile_and_tablet(width="95%"),
-            bg=Colores.BG_COMPONENTES.value, border_radius=Tamaños.BORDER_RADIUS,
-            border=Tamaños.BORDER.value, padding=Tamaños.PADDING.value
-        ), rx.mobile_and_tablet(width="37vw"), margin_x=Tamaños.MARGIN_GRANDE.value, _hover=_hover_generico
+            rx.mobile_and_tablet(width="15vw"),  # Tamaño ajustado para móvil
+            bg=Colores.BG_COMPONENTES.value, border_radius=Tamaños.BORDER_RADIUS.value,
+            border=Tamaños.BORDER.value, padding=Tamaños.PADDING.value,
+            align_text="center"
+        ),
+        rx.mobile_and_tablet(width="35vw",margin_x="0px",),
+        margin=Tamaños.MARGIN_PEQUEÑO.value,
+        _hover=_hover_generico,
+        align_text= "center"
     )
-# endregion
 
+# Configuración de la pantalla de juego ajustada
 @rx.page(route=routers.TRES_EN_RAYA.value)
 def pantalla_juego3() -> rx.Component:
     return rx.box(
         rx.vstack(
             navbar(),
-            rx.hstack(
-                tablero(), ronda(),
-                rx.vstack(
-                    puntuacion("TÚ", EstadoTresEnRaya.var_puntaje_jugador),
-                    puntuacion("NPC", EstadoTresEnRaya.var_puntaje_ia)
+            # Configuración de escritorio
+            rx.desktop_only(
+                rx.hstack(
+                    tablero("40vw", "auto" , "auto"),
+                    ronda("20vw"),
+                    rx.vstack(
+                        puntuacion("TÚ", EstadoTresEnRaya.var_puntaje_jugador),
+                        puntuacion("NPC", EstadoTresEnRaya.var_puntaje_ia)
+                    ),
+                    spacing="4"
                 )
-            )
-        ), bg=Colores.BG.value,
-        background_size="cover",
-        min_height="100vh"
+            ),
+            # Configuración móvil y tablet: centrado verticalmente
+                rx.mobile_and_tablet(
+                    rx.center(
+                        rx.box(
+                            rx.center(
+                                ronda("35vw"),
+                            ),
+                            tablero("80vw" , "auto", "23vw"),
+                            rx.center(
+                                rx.box(
+                                    rx.hstack(
+                                        puntuacion("NPC", EstadoTresEnRaya.var_puntaje_ia),
+                                        puntuacion("JUGADOR", EstadoTresEnRaya.var_puntaje_jugador),
+                                        bg=Colores.BG_COMPONENTES.value,
+                                        border_radius=Tamaños.BORDER_RADIUS.value,
+                                        border=Tamaños.BORDER.value,
+                                        margin_y=Tamaños.MARGIN_PEQUEÑO.value
+                                    ),
+                                ),
+                            ),
+                            min_height="100vh",  # Altura mínima de la pantalla completa para centrar verticalmente
+                            min_width="100vw"
+                    )
+                )
+            ),
+            bg=Colores.BG.value,
+            background_size="cover",
+            min_height="100vh",
+            min_width="100vw"
+        )
     )
