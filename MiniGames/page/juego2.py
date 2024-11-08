@@ -206,7 +206,7 @@ def jugadas(direccion:str= "column") -> rx.Component:
         rx.flex(
             # Jugada del NPC
             rx.box(
-                rx.text(EstadoJuego.jugada_npc, font_size=["80px", "100px", "120px"]),
+                rx.text(EstadoJuego.jugada_npc, font_size=["70px","80px", "100px", "120px"]),
                 bg=Colores.PRINCIPAL.value,
                 padding=Tamaños.PADDING.value,
                 border_radius=Tamaños.BORDER_RADIUS.value,
@@ -214,13 +214,13 @@ def jugadas(direccion:str= "column") -> rx.Component:
                 justify="center",
                 align_items="center",
                 text_align="center",
-                width="95%",
+                width="90%",
                 height="45%",
                 margin=Tamaños.MARGIN_PEQUEÑO.value
             ),
             # Jugada del Jugador
             rx.box(
-                rx.text(EstadoJuego.jugada_jugador, font_size=["80px", "100px", "120px"]),
+                rx.text(EstadoJuego.jugada_jugador, font_size=["70px","80px", "100px", "120px"]),
                 bg=Colores.PRINCIPAL.value,
                 padding=Tamaños.PADDING.value,
                 border_radius=Tamaños.BORDER_RADIUS.value,
@@ -228,7 +228,7 @@ def jugadas(direccion:str= "column") -> rx.Component:
                 justify="center",
                 align_items="center",
                 text_align="center",
-                width="95%",
+                width="90%",
                 height="45%",
                 margin=Tamaños.MARGIN_PEQUEÑO.value
             ),
