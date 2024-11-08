@@ -8,6 +8,25 @@ from MiniGames.Components.navbar import navbar
 from MiniGames.routers import routers
 from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
 
+mensajes_victoria:list = [
+    "¡Ganaste como un verdadero estratega! 🎉",
+    "¡Toma eso, tablero! ¡Victoria absoluta! 😎",
+    "¡Ja! ¡Ganaste! ¡Este tablero nunca tuvo oportunidad! 😜",
+    "¡Triunfo asegurado! ¡La suerte no tuvo nada que ver! 👊",
+    "¡Victoria! ¡Los dioses del 3 en raya están contigo! 😇",
+    "¡Ganaste! ¡Demasiado fácil para un maestro del 3 en raya como tú! 🧠",
+    "¡Líneas completas, enemigo derrotado! ¡Eres imparable! 🥳"
+]
+
+mensajes_derrota:list = [
+    "¡Perdiste! Pero, hey, siempre hay revancha. 😅",
+    "¡Vaya! Esta vez el tablero te venció... ¿Intentas de nuevo? 🙃",
+    "¡Lo siento, esta no fue la tuya! ¿Sigues jugando? 😜",
+    "¡Oh no! Caíste en una trampa perfecta. Mejor suerte la próxima vez. 🤓",
+    "¡Perdiste, pero el tablero quiere otro desafío! 😈",
+    "¡Ups! ¡Derrota aplastante! Pero seguro que puedes mejorar. 🤔",
+    "¡Game over! El 3 en raya es implacable a veces... 😬"
+]
 
 # region: Estado del Juego
 class EstadoJuego(classBase):
@@ -297,8 +316,8 @@ def pantalla_juego3() -> rx.Component:
                     )
                 )
             ),
-            modal_ganastes(EstadoJuego, "increible, le ganaste a la ai"),
-            modal_perdistes(EstadoJuego, "perdiste bro"),
+            modal_ganastes(EstadoJuego, random.choice(mensajes_victoria)),
+            modal_perdistes(EstadoJuego, random.choice(mensajes_derrota)),
             bg=Colores.BG.value,
             background_size="cover",
             min_height="100vh",
