@@ -10,7 +10,7 @@ from MiniGames.styles import Colores, Tamaños, TamañosTexto, _hover_generico
 
 
 # region: Estado del Juego
-class EstadoTresEnRaya(classBase):
+class EstadoJuego(classBase):
     """Clase para gestionar el estado del juego de 3 en raya."""
     # Variables de estado del juego
     tablero: list = [""] * 9
@@ -19,22 +19,23 @@ class EstadoTresEnRaya(classBase):
     puntaje_jugador: int = 0
     puntaje_ia: int = 0
     juego_terminado: bool = False
-    ganador_declarado: bool = False
+
 
     # region: Métodos de reinicio
-    def reiniciar_juego(self):
+    def reiniciar_partido(self):
         """Reinicia el tablero a su estado inicial para una nueva ronda."""
         self.tablero = [""] * 9
         self.jugador_actual = "❌"
         self.juego_terminado = False
 
-    def reiniciar_partida(self):
+    def reiniciar_juego(self):
         """Reinicia el juego completo, incluyendo puntajes y rondas."""
-        self.reiniciar_juego()
+        self.reiniciar_partido()
         self.ronda = 1
         self.puntaje_jugador = 0
         self.puntaje_ia = 0
-        self.ganador_declarado = False
+        self.mostrar_modal_perdistes = False
+        self.mostrar_modal_ganastes = False
     # endregion
 
     # region: Métodos de verificación
@@ -71,12 +72,11 @@ class EstadoTresEnRaya(classBase):
         # Verificar si se alcanza la condición de victoria
         if self.ronda < 20 and max(self.puntaje_jugador, self.puntaje_ia) < 10:
             self.ronda += 1
-            self.reiniciar_juego()
+            self.reiniciar_partido()
         else:
-            self.ganador_declarado = True
+            self.mostrar_modal_perdistes = True
             self.mostrar_modal_ganastes = self.puntaje_jugador > self.puntaje_ia
             self.mostrar_modal_perdistes = self.puntaje_ia >= self.puntaje_jugador
-            self.reiniciar_partida()
     # endregion
 
     # region: Lógica de movimientos
@@ -174,14 +174,14 @@ def tablero(ancho, alto, ancho_boton) -> rx.Component:
             *[
                 rx.button(
                     rx.cond(
-                        EstadoTresEnRaya.tablero[i] != "",
-                        EstadoTresEnRaya.tablero[i],
+                        EstadoJuego.tablero[i] != "",
+                        EstadoJuego.tablero[i],
                         " "
                     ),
                     width=ancho_boton,  # Ajustes para móvil (30vw) y escritorio (10vw)
                     height=alto,  # Ajustes para móvil (30vw) y escritorio (10vw)
                     bg="#0000", border="solid #FFFFFF",
-                    on_click=lambda i=i: EstadoTresEnRaya.realizar_movimiento(i),
+                    on_click=lambda i=i: EstadoJuego.realizar_movimiento(i),
                 ) for i in range(9)
             ],
             rx.mobile_and_tablet(width="90%", height="90%", margin=Tamaños.MARGIN_PEQUEÑO.value),
@@ -199,7 +199,7 @@ def tablero(ancho, alto, ancho_boton) -> rx.Component:
         align_items="center"
     )
 
-def ronda(ancho) -> rx.Component:
+def ronda(ancho, margen) -> rx.Component:
     return rx.center(
         rx.box(
             rx.text(
@@ -210,7 +210,7 @@ def ronda(ancho) -> rx.Component:
             ),
             rx.box(
                 rx.text(
-                    EstadoTresEnRaya.var_ronda_actual,
+                    EstadoJuego.var_ronda_actual,
                     font_size=["30px","20px", TamañosTexto.TITULO.value],
                     color=Colores.TITULO.value,
                     align="center"
@@ -227,8 +227,7 @@ def ronda(ancho) -> rx.Component:
                 border=Tamaños.BORDER.value
             ),
             # Márgenes específicos para cada tipo de dispositivo
-            rx.desktop_only(margin_y=175),
-            rx.mobile_and_tablet(margin_y=3)
+            margin_y = margen
         ),
         width="100%",  # Aseguramos que el centro ocupe todo el ancho
         height="100%", # Aseguramos que el centro ocupe toda la altura
@@ -265,10 +264,10 @@ def pantalla_juego3() -> rx.Component:
             rx.desktop_only(
                 rx.hstack(
                     tablero("40vw", "auto" , "auto"),
-                    ronda("20vw"),
+                    ronda("20vw" , 175),
                     rx.vstack(
-                        puntuacion("TÚ", EstadoTresEnRaya.var_puntaje_jugador),
-                        puntuacion("NPC", EstadoTresEnRaya.var_puntaje_ia)
+                        puntuacion("TÚ", EstadoJuego.var_puntaje_jugador),
+                        puntuacion("NPC", EstadoJuego.var_puntaje_ia)
                     ),
                     spacing="4"
                 )
@@ -278,14 +277,14 @@ def pantalla_juego3() -> rx.Component:
                     rx.center(
                         rx.box(
                             rx.center(
-                                ronda("35vw"),
+                                ronda("35vw" , 5),
                             ),
                             tablero("80vw" , "auto", "23vw"),
                             rx.center(
                                 rx.box(
                                     rx.hstack(
-                                        puntuacion("NPC", EstadoTresEnRaya.var_puntaje_ia),
-                                        puntuacion("JUGADOR", EstadoTresEnRaya.var_puntaje_jugador),
+                                        puntuacion("NPC", EstadoJuego.var_puntaje_ia),
+                                        puntuacion("JUGADOR", EstadoJuego.var_puntaje_jugador),
                                         bg=Colores.BG_COMPONENTES.value,
                                         border_radius=Tamaños.BORDER_RADIUS.value,
                                         border=Tamaños.BORDER.value,
@@ -298,6 +297,8 @@ def pantalla_juego3() -> rx.Component:
                     )
                 )
             ),
+            modal_ganastes(EstadoJuego, "increible, le ganaste a la ai"),
+            modal_perdistes(EstadoJuego, "perdiste bro"),
             bg=Colores.BG.value,
             background_size="cover",
             min_height="100vh",
