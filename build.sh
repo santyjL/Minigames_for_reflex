@@ -4,5 +4,4 @@ pip install -r requirements.txt
 py -m reflex init
 reflex export
 unzip frontend.zip -d frontend
-unzip backend.zip -d backend
 deactive
